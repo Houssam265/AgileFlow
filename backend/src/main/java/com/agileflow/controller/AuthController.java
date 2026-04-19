@@ -1,0 +1,50 @@
+package com.agileflow.controller;
+
+import com.agileflow.repository.UserRepository;
+import com.agileflow.service.AuthService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final AuthService authService;
+    private final UserRepository userRepository;
+
+    @GetMapping("/check-email")
+    public ResponseEntity<Map<String, Boolean>> checkEmail(@RequestParam String email) {
+        boolean available = !userRepository.existsByEmail(email);
+        return ResponseEntity.ok(Map.of("available", available));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthService.AuthResponse> register(@RequestBody AuthService.RegisterRequest request) {
+        return ResponseEntity.ok(authService.register(request));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthService.AuthResponse> login(@RequestBody AuthService.LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthService.AuthResponse> refresh(@RequestHeader("Authorization") String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.badRequest().build();
+        }
+        String refreshToken = authHeader.substring(7); // "Bearer " = 7 caractères
+        return ResponseEntity.ok(authService.refreshToken(refreshToken));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout() {
+        // En authentification JWT pure (Stateless), le logout est géré par le Frontend 
+        // en supprimant le token du LocalStorage ou des Cookies.
+        return ResponseEntity.ok("Déconnexion réussie. Veuillez supprimer le token côté client.");
+    }
+}
