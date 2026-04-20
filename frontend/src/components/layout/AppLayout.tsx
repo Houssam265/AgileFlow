@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
   Toolbar, Typography, Avatar, Divider, IconButton, AppBar, Tooltip, Chip,
 } from '@mui/material';
 import {
   Dashboard, Assignment, Group, Timeline, Settings, Logout,
-  Menu as MenuIcon, ChevronLeft,
+  Menu as MenuIcon, ChevronLeft, People,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -15,6 +15,7 @@ const DRAWER_WIDTH = 250;
 const NAV_ITEMS = [
   { label: 'Tableau de bord', path: '/dashboard',  icon: <Dashboard /> },
   { label: 'Projets',         path: '/projects',   icon: <Assignment /> },
+  { label: 'Utilisateurs',    path: '/users',      icon: <People /> },
   { label: 'Équipes',         path: '/teams',      icon: <Group /> },
   { label: 'Sprints',         path: '/sprints',    icon: <Timeline /> },
   { label: 'Paramètres',      path: '/settings',   icon: <Settings /> },
@@ -93,7 +94,11 @@ const AppLayout = () => {
 
         <List dense>
           {NAV_ITEMS.map(({ label, path, icon }) => {
-            const active = location.pathname === path;
+            const active = path === '/teams'
+              ? location.pathname.startsWith('/teams')
+              : path === '/users'
+                ? location.pathname.startsWith('/users')
+                : location.pathname === path;
             return (
               <ListItem key={path} disablePadding sx={{ display: 'block' }}>
                 <Tooltip title={!open ? label : ''} placement="right">

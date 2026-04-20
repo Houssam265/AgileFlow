@@ -5,6 +5,10 @@ import AppLayout    from '../components/layout/AppLayout';
 import LoginPage    from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 import DashboardPage from '../pages/DashboardPage';
+import UsersListPage from '../pages/users/UsersListPage';
+import UserProfilePage from '../pages/users/UserProfilePage';
+import TeamsPage from '../pages/teams/TeamsPage';
+import TeamDetailsPage from '../pages/teams/TeamDetailsPage';
 
 // ── Route protégée avec contrôle de rôle optionnel ──
 const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: string[] }) => {
@@ -33,7 +37,10 @@ const AppRouter = () => (
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/projects"  element={<div>Projets — à venir</div>} />
-        <Route path="/teams"     element={<div>Équipes — à venir</div>} />
+        <Route path="/users" element={<UsersListPage />} />
+        <Route path="/users/:id" element={<UserProfilePage />} />
+        <Route path="/teams" element={<TeamsPage />} />
+        <Route path="/teams/:id" element={<TeamDetailsPage />} />
         <Route path="/sprints"   element={<div>Sprints — à venir</div>} />
         <Route path="/settings"  element={<div>Paramètres — à venir</div>} />
       </Route>

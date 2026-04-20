@@ -7,6 +7,7 @@ import { Visibility, VisibilityOff, PersonAddOutlined, CheckCircle, Cancel } fro
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api/axiosInterceptor';
+import { passwordMeetsPolicy, PASSWORD_REQUIREMENTS_TEXT } from '../../utils/passwordPolicy';
 
 const RegisterPage = () => {
   const [form, setForm] = useState({ prenom: '', nom: '', email: '', password: '', confirm: '' });
@@ -98,9 +99,8 @@ const RegisterPage = () => {
 
   const validate = () => {
     if (emailError) return "Veuillez corriger l'adresse email.";
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(form.password)) {
-        return 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, un chiffre et un caractère spécial (@$!%*?&)';
+    if (!passwordMeetsPolicy(form.password)) {
+      return PASSWORD_REQUIREMENTS_TEXT;
     }
     if (form.password !== form.confirm) return 'Les mots de passe ne correspondent pas.';
     return null;
@@ -206,7 +206,7 @@ const RegisterPage = () => {
             variant="contained" 
             size="large" 
             fullWidth 
-            disabled={loading || !!emailError || form.password !== form.confirm} 
+            disabled={loading || !!emailError || !passwordMeetsPolicy(form.password) || form.password !== form.confirm} 
             sx={{ mt: 1, py: 1.5 }}
           >
             {loading ? <CircularProgress size={24} color="inherit" /> : 'Créer mon compte'}

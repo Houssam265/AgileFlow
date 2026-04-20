@@ -24,6 +24,9 @@ public class User {
     private boolean actif = true;
     private LocalDateTime dateCreation = LocalDateTime.now();
 
+    /** Dernière connexion réussie (login). */
+    private LocalDateTime dateDerniereConnexion;
+
     public enum Role {
         ROLE_ADMIN, ROLE_MANAGER, ROLE_DEVELOPER
     }

@@ -8,8 +8,8 @@ AgileFlow est une plateforme complète de gestion de projets Agile inspirée de 
 ## 🏗️ Architecture du Projet
 
 Le projet est divisé en deux applications distinctes :
-- **Backend** : API Spring Boot 3.3.5 à la racine du projet
-- **Frontend** : Application React 18 dans le dossier `agileflow-frontend/`
+- **Backend** : API Spring Boot 3.3.5 dans le dossier `backend/`
+- **Frontend** : Application React 18 dans le dossier `frontend/`
 
 ## 🚀 Démarrage Rapide
 
@@ -29,18 +29,13 @@ Le projet est divisé en deux applications distinctes :
 
 ### 2. Configuration du Backend (Spring Boot)
 
-1. Naviguer à la racine du projet :
-   ```bash
-   cd /chemin/vers/Codebase
-   ```
-
-2. Configurer les paramètres de base de données dans `src/main/resources/application.properties` :
+1. Configurer les paramètres de base de données dans `src/main/resources/application.properties` :
    ```properties
    spring.datasource.username=votre_utilisateur
    spring.datasource.password=votre_mot_de_passe
    ```
 
-3. Lancer l'application :
+2. Lancer l'application :
    ```bash
    ./mvnw spring-boot:run
    ```
@@ -51,7 +46,7 @@ Le projet est divisé en deux applications distinctes :
 
 1. Naviguer dans le dossier frontend :
    ```bash
-   cd agileflow-frontend
+   cd frontend
    ```
 
 2. **IMPORTANT : Installer les dépendances**
@@ -59,13 +54,18 @@ Le projet est divisé en deux applications distinctes :
    npm install
    ```
 
-3. Vérifier que le fichier `.env` contient :
+3. Créer le fichier `.env` a partir du template :
+   ```bash
+   cp .env.example .env
+   ```
+
+4. Verifier que le fichier `.env` contient :
    ```
    VITE_API_URL=http://localhost:8080/api
    VITE_WS_URL=http://localhost:8080/ws
    ```
 
-4. Lancer le serveur de développement :
+5. Lancer le serveur de développement :
    ```bash
    npm run dev
    ```
@@ -89,7 +89,7 @@ src/main/java/com/agileflow/
 
 ### Frontend Structure
 ```
-agileflow-frontend/src/
+frontend/src/
 ├── api/              # Configuration Axios et appels API
 ├── components/       # Composants réutilisables
 ├── context/         # Contextes React globaux
@@ -170,7 +170,7 @@ npm run lint         # Vérification du code
 - `spring.datasource.password` - Mot de passe MySQL
 - `jwt.secret` - Clé secrète pour JWT
 
-**Frontend** (`.env`) :
+**Frontend** (`frontend/.env`) :
 - `VITE_API_URL` - URL de l'API backend
 - `VITE_WS_URL` - URL WebSocket pour le temps réel
 
@@ -198,9 +198,10 @@ Pour toute question ou problème :
 **⚠️ IMPORTANT POUR L'ÉQUIPE :**
 
 Avant de commencer à travailler sur le frontend, assurez-vous de :
-1. Naviguer dans le dossier `agileflow-frontend/`
+1. Naviguer dans le dossier `frontend/`
 2. Exécuter `npm install` pour installer toutes les dépendances
-3. Vérifier que le backend tourne sur http://localhost:8080
-4. Lancer le frontend avec `npm run dev`
+3. Créer `.env` depuis `.env.example`
+4. Vérifier que le backend tourne sur http://localhost:8080
+5. Lancer le frontend avec `npm run dev`
 
 Le projet est prêt pour le développement ! 🚀

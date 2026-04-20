@@ -3,6 +3,7 @@ package com.agileflow.service;
 import com.agileflow.entity.User;
 import com.agileflow.repository.UserRepository;
 import com.agileflow.security.JwtUtil;
+import com.agileflow.validation.PasswordValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,8 +21,10 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final PasswordValidator passwordValidator;
 
     public AuthResponse register(RegisterRequest request) {
+        passwordValidator.assertValid(request.password());
         if (userRepository.existsByEmail(request.email())) {
             throw new RuntimeException("Email déjà utilisé.");
         }
@@ -49,7 +52,10 @@ public class AuthService {
 
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
-        
+
+        user.setDateDerniereConnexion(LocalDateTime.now());
+        userRepository.save(user);
+
         return generateTokens(user);
     }
 
