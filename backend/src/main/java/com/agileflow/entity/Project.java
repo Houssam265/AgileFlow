@@ -2,7 +2,9 @@ package com.agileflow.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.ArrayList;
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Table(name = "projects")
@@ -22,7 +24,15 @@ public class Project {
     private Statut statut = Statut.ACTIF;
     @ManyToOne
     @JoinColumn(name = "manager_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private User manager;
+
+    @OneToMany(mappedBy = "project")
+    @Builder.Default
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<Sprint> sprints = new ArrayList<>();
 
     public enum Statut {
         ACTIF, ARCHIVE, TERMINE

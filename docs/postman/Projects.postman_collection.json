@@ -1,0 +1,105 @@
+{
+  "info": {
+    "name": "AgileFlow Projects",
+    "_postman_id": "d09e9cbc-85f2-4a73-b01f-ff197ed8473f",
+    "description": "Collection Postman pour tester le CRUD projets et le dashboard.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "List Projects",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/projects"
+      }
+    },
+    {
+      "name": "Create Project",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Portail Web\",\n  \"description\": \"Projet client prioritaire\",\n  \"startDate\": \"2026-04-22\",\n  \"endDate\": \"2026-06-15\",\n  \"status\": \"ACTIF\",\n  \"managerId\": 2\n}"
+        },
+        "url": "{{baseUrl}}/projects"
+      }
+    },
+    {
+      "name": "Update Project",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Portail Web v2\",\n  \"description\": \"Perimetre etendu\",\n  \"startDate\": \"2026-04-22\",\n  \"endDate\": \"2026-06-30\",\n  \"status\": \"ACTIF\",\n  \"managerId\": 2\n}"
+        },
+        "url": "{{baseUrl}}/projects/{{projectId}}"
+      }
+    },
+    {
+      "name": "Delete Project",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/projects/{{projectId}}"
+      }
+    },
+    {
+      "name": "Dashboard Stats",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/dashboard/stats"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "projectId",
+      "value": "1"
+    }
+  ]
+}

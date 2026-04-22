@@ -23,9 +23,13 @@ public class Task {
     private LocalDate dateEcheance;
     @ManyToOne
     @JoinColumn(name = "assigned_to")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private User assignedTo;
     @ManyToOne
     @JoinColumn(name = "sprint_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Sprint sprint;
 
     public enum Statut {

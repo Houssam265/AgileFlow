@@ -1,4 +1,5 @@
 export type Role = 'ROLE_ADMIN' | 'ROLE_MANAGER' | 'ROLE_DEVELOPER';
+export type ProjectStatus = 'ACTIF' | 'ARCHIVE' | 'TERMINE';
 
 export interface User {
   id: number;
@@ -88,4 +89,44 @@ export interface CreateTeamPayload {
 export interface UpdateTeamPayload {
   name: string;
   description?: string;
+}
+
+export interface ProjectListItem {
+  id: number;
+  name: string;
+  description: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  status: ProjectStatus;
+  managerId: number | null;
+  managerName: string | null;
+  sprintCount: number;
+  taskCount: number;
+}
+
+export interface CreateProjectPayload {
+  name: string;
+  description?: string;
+  startDate: string;
+  endDate?: string;
+  status: ProjectStatus;
+  managerId: number;
+}
+
+export interface UpdateProjectPayload extends CreateProjectPayload {}
+
+export interface DashboardStats {
+  role: Role;
+  totalUsers: number;
+  activeUsers: number;
+  totalTeams: number;
+  managedTeams: number;
+  totalProjects: number;
+  managedProjects: number;
+  activeProjects: number;
+  activeSprints: number;
+  totalTasks: number;
+  todoTasks: number;
+  inProgressTasks: number;
+  doneTasks: number;
 }

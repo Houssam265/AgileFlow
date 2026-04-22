@@ -1,18 +1,59 @@
-import { Box, Grid, Paper, Typography, Avatar, Chip, Button } from '@mui/material';
-import { Group, Assignment, Timeline } from '@mui/icons-material';
+import { useEffect, useState } from 'react';
+import {
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Paper,
+  Stack,
+  Typography,
+} from '@mui/material';
+import { Assignment, Group, Timeline } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { fetchDashboardStats } from '../api/dashboardApi';
+import { fetchProjects } from '../api/projectsApi';
+import ProjectStats from '../components/dashboard/ProjectStats';
+import ProjectCard from '../components/projects/ProjectCard';
 import { useAuth } from '../context/AuthContext';
+import type { DashboardStats, ProjectListItem } from '../types';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'Utilisateur';
 
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [dashboardStats, projectRows] = await Promise.all([fetchDashboardStats(), fetchProjects()]);
+        if (!active) return;
+        setStats(dashboardStats);
+        setProjects(projectRows.slice(0, 3));
+      } catch {
+        if (!active) return;
+        setError('Impossible de charger les donnees du dashboard.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
-
-      {/* ── Header de bienvenue ─────────────────────────────── */}
       <Paper
         elevation={0}
         sx={{
@@ -36,10 +77,10 @@ const DashboardPage = () => {
           </Avatar>
           <Box>
             <Typography variant="h4" fontWeight={800} lineHeight={1.2}>
-              Bonjour, {fullName} 👋
+              Bonjour, {fullName}
             </Typography>
             <Typography variant="body1" sx={{ mt: 0.5, opacity: 0.85 }}>
-              Bienvenue sur votre tableau de bord AgileFlow
+              Vue rapide sur les projets, equipes et taches.
             </Typography>
           </Box>
         </Box>
@@ -49,56 +90,71 @@ const DashboardPage = () => {
         />
       </Paper>
 
-      <Grid container spacing={2.5} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} lg={3}>
-          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', height: '100%' }}>
-            <Assignment color="primary" />
-            <Typography variant="h6" fontWeight={700} sx={{ mt: 1 }}>Projets</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Consultez et organisez les projets de l&apos;équipe.
-            </Typography>
-            <Button sx={{ mt: 2 }} onClick={() => navigate('/projects')}>Ouvrir</Button>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} lg={3}>
-          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', height: '100%' }}>
-            <Group color="primary" />
-            <Typography variant="h6" fontWeight={700} sx={{ mt: 1 }}>Utilisateurs</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Gérez les profils, rôles et accès des utilisateurs.
-            </Typography>
-            <Button sx={{ mt: 2 }} onClick={() => navigate('/users')}>Ouvrir</Button>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} lg={3}>
-          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', height: '100%' }}>
-            <Group color="primary" />
-            <Typography variant="h6" fontWeight={700} sx={{ mt: 1 }}>Équipes</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Créez des équipes et gérez leurs membres.
-            </Typography>
-            <Button sx={{ mt: 2 }} onClick={() => navigate('/teams')}>Ouvrir</Button>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} lg={3}>
-          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', height: '100%' }}>
-            <Timeline color="primary" />
-            <Typography variant="h6" fontWeight={700} sx={{ mt: 1 }}>Sprints</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Suivez l&apos;avancement des sprints et itérations.
-            </Typography>
-            <Button sx={{ mt: 2 }} onClick={() => navigate('/sprints')}>Ouvrir</Button>
-          </Paper>
-        </Grid>
-      </Grid>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.5} sx={{ mb: 3 }}>
+        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', flex: 1 }}>
+          <Assignment color="primary" />
+          <Typography variant="h6" fontWeight={700} sx={{ mt: 1 }}>Projets</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Creez, assignez et priorisez les projets actifs.
+          </Typography>
+          <Button sx={{ mt: 2 }} onClick={() => navigate('/projects')}>Ouvrir</Button>
+        </Paper>
+        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', flex: 1 }}>
+          <Group color="primary" />
+          <Typography variant="h6" fontWeight={700} sx={{ mt: 1 }}>Utilisateurs</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Gere les profils, roles et acces des utilisateurs.
+          </Typography>
+          <Button sx={{ mt: 2 }} onClick={() => navigate('/users')}>Ouvrir</Button>
+        </Paper>
+        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', flex: 1 }}>
+          <Group color="primary" />
+          <Typography variant="h6" fontWeight={700} sx={{ mt: 1 }}>Equipes</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Structure les equipes et leur responsabilite.
+          </Typography>
+          <Button sx={{ mt: 2 }} onClick={() => navigate('/teams')}>Ouvrir</Button>
+        </Paper>
+        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', flex: 1 }}>
+          <Timeline color="primary" />
+          <Typography variant="h6" fontWeight={700} sx={{ mt: 1 }}>Sprints</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Visualise les sprints actifs et leur charge.
+          </Typography>
+          <Button sx={{ mt: 2 }} onClick={() => navigate('/sprints')}>Ouvrir</Button>
+        </Paper>
+      </Stack>
 
-      <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200' }}>
-        <Typography variant="h6" fontWeight={700}>Tableau de bord</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          Les indicateurs en temps réel seront affichés ici lorsque les modules analytics seront connectés.
-        </Typography>
-      </Paper>
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+      ) : error ? (
+        <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
+      ) : stats ? (
+        <>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Indicateurs</Typography>
+            <ProjectStats stats={stats} />
+          </Box>
 
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 2 }}>
+              <Typography variant="h6" fontWeight={700}>Projets recents</Typography>
+              <Button onClick={() => navigate('/projects')}>Voir tout</Button>
+            </Box>
+            {projects.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">Aucun projet disponible pour le moment.</Typography>
+            ) : (
+              <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5}>
+                {projects.map((project) => (
+                  <Box key={project.id} sx={{ flex: 1, minWidth: 0 }}>
+                    <ProjectCard project={project} />
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </Paper>
+        </>
+      ) : null}
     </Box>
   );
 };

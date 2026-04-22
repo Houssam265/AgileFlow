@@ -22,6 +22,8 @@ public class Sprint {
     private Statut statut = Statut.PLANIFIE;
     @ManyToOne
     @JoinColumn(name = "project_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Project project;
 
     public enum Statut {

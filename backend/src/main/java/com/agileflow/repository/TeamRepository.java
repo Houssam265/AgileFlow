@@ -18,4 +18,6 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
             ORDER BY t.createdAt DESC
             """)
     List<Team> search(@Param("q") String q);
+
+    long countByManager_Id(Long managerId);
 }
