@@ -9,6 +9,7 @@ import TeamsPage from '../pages/teams/TeamsPage';
 import TeamDetailsPage from '../pages/teams/TeamDetailsPage';
 import UserProfilePage from '../pages/users/UserProfilePage';
 import UsersListPage from '../pages/users/UsersListPage';
+import SprintsPage from '../pages/sprints/SprintsPage';
 
 const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: string[] }) => {
   const { token, user } = useAuth();
@@ -37,7 +38,7 @@ const AppRouter = () => (
         <Route path="/users/:id" element={<UserProfilePage />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/teams/:id" element={<TeamDetailsPage />} />
-        <Route path="/sprints" element={<div>Sprints - a venir</div>} />
+        <Route path="/sprints" element={<SprintsPage />} />
         <Route path="/settings" element={<div>Parametres - a venir</div>} />
       </Route>
 
