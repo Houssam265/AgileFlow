@@ -1,30 +1,52 @@
 import { useState } from 'react';
 import {
-  Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
-  Toolbar, Typography, Avatar, Divider, IconButton, AppBar, Tooltip, Chip,
+  AppBar,
+  Avatar,
+  Box,
+  Chip,
+  Divider,
+  Drawer,
+  IconButton,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Toolbar,
+  Tooltip,
+  Typography,
 } from '@mui/material';
 import {
-  Dashboard, Assignment, Group, Timeline, Settings, Logout,
-  Menu as MenuIcon, ChevronLeft, People,
+  Assignment,
+  ChevronLeft,
+  Dashboard,
+  Group,
+  Logout,
+  Menu as MenuIcon,
+  People,
+  Settings,
+  Timeline,
+  ViewKanban,
 } from '@mui/icons-material';
-import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const DRAWER_WIDTH = 250;
 
 const NAV_ITEMS = [
-  { label: 'Tableau de bord', path: '/dashboard',  icon: <Dashboard /> },
-  { label: 'Projets',         path: '/projects',   icon: <Assignment /> },
-  { label: 'Utilisateurs',    path: '/users',      icon: <People /> },
-  { label: 'Équipes',         path: '/teams',      icon: <Group /> },
-  { label: 'Sprints',         path: '/sprints',    icon: <Timeline /> },
-  { label: 'Paramètres',      path: '/settings',   icon: <Settings /> },
+  { label: 'Tableau de bord', path: '/dashboard', icon: <Dashboard /> },
+  { label: 'Projets', path: '/projects', icon: <Assignment /> },
+  { label: 'Backlog', path: '/backlog', icon: <ViewKanban /> },
+  { label: 'Utilisateurs', path: '/users', icon: <People /> },
+  { label: 'Equipes', path: '/teams', icon: <Group /> },
+  { label: 'Sprints', path: '/sprints', icon: <Timeline /> },
+  { label: 'Parametres', path: '/settings', icon: <Settings /> },
 ];
 
 const ROLE_LABELS: Record<string, { label: string; color: 'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success' }> = {
-  ROLE_ADMIN:     { label: 'Admin',     color: 'error' },
-  ROLE_MANAGER:   { label: 'Manager',   color: 'warning' },
-  ROLE_DEVELOPER: { label: 'Dev',       color: 'info' },
+  ROLE_ADMIN: { label: 'Admin', color: 'error' },
+  ROLE_MANAGER: { label: 'Manager', color: 'warning' },
+  ROLE_DEVELOPER: { label: 'Dev', color: 'info' },
 };
 
 const AppLayout = () => {
@@ -33,13 +55,15 @@ const AppLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => { logout(); navigate('/login', { replace: true }); };
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
   const roleInfo = ROLE_LABELS[user?.role ?? ''] ?? { label: user?.role ?? '', color: 'default' };
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
-
-      {/* ── AppBar (Top) ── */}
       <AppBar position="fixed" elevation={0} sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: 'white', borderBottom: '1px solid', borderColor: 'divider' }}>
         <Toolbar sx={{ justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -51,7 +75,7 @@ const AppLayout = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Chip label={roleInfo.label} color={roleInfo.color} size="small" />
             <Typography variant="body2" color="text.secondary">{user?.email}</Typography>
-            <Tooltip title="Se déconnecter">
+            <Tooltip title="Se deconnecter">
               <IconButton onClick={handleLogout} color="default" size="small">
                 <Logout fontSize="small" />
               </IconButton>
@@ -60,7 +84,6 @@ const AppLayout = () => {
         </Toolbar>
       </AppBar>
 
-      {/* ── Sidebar Drawer ── */}
       <Drawer
         variant="permanent"
         open={open}
@@ -78,7 +101,7 @@ const AppLayout = () => {
           },
         }}
       >
-        <Toolbar /> {/* Décale sous l'AppBar */}
+        <Toolbar />
         <Box sx={{ px: open ? 2 : 0.5, py: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
           <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
             {user?.firstName?.[0] ?? user?.email?.[0]?.toUpperCase()}
@@ -94,11 +117,9 @@ const AppLayout = () => {
 
         <List dense>
           {NAV_ITEMS.map(({ label, path, icon }) => {
-            const active = path === '/teams'
-              ? location.pathname.startsWith('/teams')
-              : path === '/users'
-                ? location.pathname.startsWith('/users')
-                : location.pathname === path;
+            const active = path === '/dashboard'
+              ? location.pathname === path
+              : location.pathname === path || location.pathname.startsWith(`${path}/`);
             return (
               <ListItem key={path} disablePadding sx={{ display: 'block' }}>
                 <Tooltip title={!open ? label : ''} placement="right">

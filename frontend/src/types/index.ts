@@ -1,5 +1,6 @@
 export type Role = 'ROLE_ADMIN' | 'ROLE_MANAGER' | 'ROLE_DEVELOPER';
 export type ProjectStatus = 'ACTIF' | 'ARCHIVE' | 'TERMINE';
+export type StoryPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export interface User {
   id: number;
@@ -130,3 +131,34 @@ export interface DashboardStats {
   inProgressTasks: number;
   doneTasks: number;
 }
+
+export interface UserStoryItem {
+  id: number;
+  title: string;
+  description: string | null;
+  priority: StoryPriority;
+  storyPoints: number | null;
+  acceptanceCriteria: string | null;
+  backlogId: number;
+  projectId: number;
+  sprintId: number | null;
+  sprintLabel: string | null;
+  createdAt: string | null;
+}
+
+export interface BacklogData {
+  id: number;
+  projectId: number;
+  projectName: string;
+  stories: UserStoryItem[];
+}
+
+export interface CreateUserStoryPayload {
+  title: string;
+  description?: string;
+  priority: StoryPriority;
+  storyPoints?: number | null;
+  acceptanceCriteria?: string;
+}
+
+export interface UpdateUserStoryPayload extends CreateUserStoryPayload {}

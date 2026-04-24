@@ -34,6 +34,11 @@ public class Project {
     @EqualsAndHashCode.Exclude
     private List<Sprint> sprints = new ArrayList<>();
 
+    @OneToOne(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Backlog backlog;
+
     public enum Statut {
         ACTIF, ARCHIVE, TERMINE
     }

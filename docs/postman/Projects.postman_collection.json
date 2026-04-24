@@ -86,6 +86,74 @@
         ],
         "url": "{{baseUrl}}/dashboard/stats"
       }
+    },
+    {
+      "name": "Get Project Backlog",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/backlogs/project/{{projectId}}?priority=HIGH"
+      }
+    },
+    {
+      "name": "Create User Story",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"En tant que PO je peux prioriser le backlog\",\n  \"description\": \"Ajout d'une user story avec priorite\",\n  \"priority\": \"HIGH\",\n  \"storyPoints\": 5,\n  \"acceptanceCriteria\": \"La story apparait dans la liste du backlog\"\n}"
+        },
+        "url": "{{baseUrl}}/backlogs/project/{{projectId}}/stories"
+      }
+    },
+    {
+      "name": "Update User Story",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"En tant que PO je peux filtrer le backlog\",\n  \"description\": \"Mise a jour de la priorite\",\n  \"priority\": \"CRITICAL\",\n  \"storyPoints\": 8,\n  \"acceptanceCriteria\": \"Le filtre par priorite fonctionne\"\n}"
+        },
+        "url": "{{baseUrl}}/user-stories/{{storyId}}"
+      }
+    },
+    {
+      "name": "Assign Story To Sprint",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/user-stories/{{storyId}}/assign-sprint/{{sprintId}}"
+      }
     }
   ],
   "variable": [
@@ -99,6 +167,14 @@
     },
     {
       "key": "projectId",
+      "value": "1"
+    },
+    {
+      "key": "storyId",
+      "value": "1"
+    },
+    {
+      "key": "sprintId",
       "value": "1"
     }
   ]

@@ -10,6 +10,7 @@ import TeamDetailsPage from '../pages/teams/TeamDetailsPage';
 import UserProfilePage from '../pages/users/UserProfilePage';
 import UsersListPage from '../pages/users/UsersListPage';
 import SprintsPage from '../pages/sprints/SprintsPage';
+import BacklogPage from '../pages/backlog/BacklogPage';
 
 const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: string[] }) => {
   const { token, user } = useAuth();
@@ -39,6 +40,7 @@ const AppRouter = () => (
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/teams/:id" element={<TeamDetailsPage />} />
         <Route path="/sprints" element={<SprintsPage />} />
+        <Route path="/backlog" element={<BacklogPage />} />
         <Route path="/settings" element={<div>Parametres - a venir</div>} />
       </Route>
 
