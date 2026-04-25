@@ -49,3 +49,11 @@ export const finishSprint = async (id: number) => {
   const { data } = await axiosInstance.post<SprintItem>(`/sprints/${id}/terminer`);
   return data;
 };
+
+export const addStoryToSprint = async (sprintId: number, storyId: number) => {
+  await axiosInstance.post(`/sprints/${sprintId}/stories/${storyId}`);
+};
+
+export const removeStoryFromSprint = async (sprintId: number, storyId: number) => {
+  await axiosInstance.delete(`/sprints/${sprintId}/stories/${storyId}`);
+};
