@@ -81,7 +81,7 @@ public class UserStoryService {
                 story.getBacklog().getId(),
                 project.getId(),
                 sprint != null ? sprint.getId() : null,
-                sprint != null ? "Sprint " + sprint.getNumero() : null,
+                sprint != null ? sprint.getNom() : null,
                 story.getCreatedAt() != null ? story.getCreatedAt().toString() : null
         );
     }

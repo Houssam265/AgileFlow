@@ -1,6 +1,8 @@
 export type Role = 'ROLE_ADMIN' | 'ROLE_MANAGER' | 'ROLE_DEVELOPER';
 export type ProjectStatus = 'ACTIF' | 'ARCHIVE' | 'TERMINE';
 export type StoryPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type TaskStatut = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
+export type TaskPriorite = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export interface User {
   id: number;
@@ -162,3 +164,38 @@ export interface CreateUserStoryPayload {
 }
 
 export interface UpdateUserStoryPayload extends CreateUserStoryPayload {}
+
+export interface TaskItem {
+  id: number;
+  titre: string;
+  description: string | null;
+  statut: TaskStatut;
+  priorite: TaskPriorite;
+  assignedToId: number | null;
+  assignedToName: string | null;
+  sprintId: number | null;
+  sprintLabel: string | null;
+  storyId: number | null;
+  dateEcheance: string | null;
+  labels: string[];
+}
+
+export interface CreateTaskPayload {
+  titre: string;
+  description?: string;
+  priorite: TaskPriorite;
+  assignedToId?: number | null;
+  sprintId?: number | null;
+  storyId?: number | null;
+  dateEcheance?: string | null;
+  labels?: string[];
+}
+
+export interface UpdateTaskPayload {
+  titre: string;
+  description?: string;
+  priorite?: TaskPriorite;
+  assignedToId?: number | null;
+  dateEcheance?: string | null;
+  labels?: string[];
+}

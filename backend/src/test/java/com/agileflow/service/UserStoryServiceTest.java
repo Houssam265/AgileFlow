@@ -145,7 +145,7 @@ class UserStoryServiceTest {
         authenticateAs(manager);
         Sprint sprint = Sprint.builder()
                 .id(400L)
-                .numero(2)
+                .nom("Sprint 2")
                 .project(project)
                 .build();
         when(userRepository.findByEmail(manager.getEmail())).thenReturn(Optional.of(manager));

@@ -152,7 +152,7 @@ class ProjectServiceTest {
         when(userRepository.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
         when(sprintRepository.findByProjectId(project.getId())).thenReturn(List.of(
-                Sprint.builder().id(1L).numero(1).project(project).build()
+                Sprint.builder().id(1L).nom("Sprint 1").project(project).build()
         ));
 
         assertThatThrownBy(() -> projectService.deleteProject(project.getId()))

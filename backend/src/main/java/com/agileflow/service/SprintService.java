@@ -1,0 +1,105 @@
+package com.agileflow.service;
+
+import com.agileflow.dto.SprintDTO;
+import com.agileflow.entity.Project;
+import com.agileflow.entity.Sprint;
+import com.agileflow.exception.ResourceNotFoundException;
+import com.agileflow.repository.ProjectRepository;
+import com.agileflow.repository.SprintRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class SprintService {
+
+    private final SprintRepository sprintRepository;
+    private final ProjectRepository projectRepository;
+
+    @Transactional(readOnly = true)
+    public List<SprintDTO> getSprintsByProject(Long projectId) {
+        return sprintRepository.findByProjectId(projectId).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public SprintDTO createSprint(SprintDTO dto) {
+        Project project = projectRepository.findById(dto.getProjetId())
+                .orElseThrow(() -> new ResourceNotFoundException("Projet introuvable"));
+
+        Sprint sprint = Sprint.builder()
+                .nom(dto.getNom())
+                .description(dto.getDescription())
+                .dateDebut(dto.getDateDebut())
+                .dateFin(dto.getDateFin())
+                .capacitePoints(dto.getCapacitePoints())
+                .pointsUtilises(0)
+                .statut(Sprint.Statut.PLANIFIE)
+                .project(project)
+                .build();
+
+        return toDto(sprintRepository.save(sprint));
+    }
+
+    @Transactional
+    public SprintDTO updateSprint(Long id, SprintDTO dto) {
+        Sprint sprint = sprintRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Sprint introuvable"));
+
+        sprint.setNom(dto.getNom());
+        sprint.setDescription(dto.getDescription());
+        sprint.setDateDebut(dto.getDateDebut());
+        sprint.setDateFin(dto.getDateFin());
+        sprint.setCapacitePoints(dto.getCapacitePoints());
+        
+        return toDto(sprintRepository.save(sprint));
+    }
+
+    @Transactional
+    public void deleteSprint(Long id) {
+        sprintRepository.deleteById(id);
+    }
+
+    @Transactional
+    public SprintDTO startSprint(Long id) {
+        Sprint sprint = sprintRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Sprint introuvable"));
+        sprint.setStatut(Sprint.Statut.ACTIF);
+        return toDto(sprintRepository.save(sprint));
+    }
+
+    @Transactional
+    public SprintDTO finishSprint(Long id) {
+        Sprint sprint = sprintRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Sprint introuvable"));
+        sprint.setStatut(Sprint.Statut.FERME);
+        return toDto(sprintRepository.save(sprint));
+    }
+
+    private SprintDTO toDto(Sprint sprint) {
+        return SprintDTO.builder()
+                .id(sprint.getId())
+                .nom(sprint.getNom())
+                .description(sprint.getDescription())
+                .dateDebut(sprint.getDateDebut())
+                .dateFin(sprint.getDateFin())
+                .capacitePoints(sprint.getCapacitePoints())
+                .pointsUtilises(sprint.getPointsUtilises())
+                .statut(mapStatut(sprint.getStatut()))
+                .projetId(sprint.getProject().getId())
+                .build();
+    }
+
+    private String mapStatut(Sprint.Statut statut) {
+        return switch (statut) {
+            case PLANIFIE -> "PLANIFIE";
+            case ACTIF -> "EN_COURS";
+            case FERME -> "TERMINE";
+        };
+    }
+}

@@ -18,4 +18,8 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     long countBySprint_Project_Manager_Id(Long managerId);
 
     long countBySprint_Project_Manager_IdAndStatut(Long managerId, Task.Statut statut);
+
+    List<Task> findBySprint_Project_Id(Long projectId);
+
+    List<Task> findByStory_Id(Long storyId);
 }

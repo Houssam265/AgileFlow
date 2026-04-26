@@ -21,6 +21,7 @@ public class Project {
     private LocalDate dateDebut;
     private LocalDate dateFin;
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Statut statut = Statut.ACTIF;
     @ManyToOne
     @JoinColumn(name = "manager_id")

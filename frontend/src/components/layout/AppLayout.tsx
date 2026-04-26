@@ -27,6 +27,7 @@ import {
   Settings,
   Timeline,
   ViewKanban,
+  ViewColumn,
 } from '@mui/icons-material';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { label: 'Tableau de bord', path: '/dashboard', icon: <Dashboard /> },
   { label: 'Projets', path: '/projects', icon: <Assignment /> },
   { label: 'Backlog', path: '/backlog', icon: <ViewKanban /> },
+  { label: 'Kanban', path: '/kanban', icon: <ViewColumn /> },
   { label: 'Utilisateurs', path: '/users', icon: <People /> },
   { label: 'Equipes', path: '/teams', icon: <Group /> },
   { label: 'Sprints', path: '/sprints', icon: <Timeline /> },

@@ -21,7 +21,9 @@ public class User {
     private String password;
     @Enumerated(EnumType.STRING)
     private Role role;
+    @Builder.Default
     private boolean actif = true;
+    @Builder.Default
     private LocalDateTime dateCreation = LocalDateTime.now();
 
     /** Dernière connexion réussie (login). */

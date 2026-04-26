@@ -72,6 +72,42 @@ Le projet est divisé en deux applications distinctes :
 
    L'application sera disponible sur : http://localhost:5173
 
+## 🧪 Données de Test et Comptes
+
+L'application inclut un mécanisme d'initialisation manuelle pour peupler la base de données avec des données réalistes.
+
+### 🏃 Comment exécuter le script de test ?
+
+Vous pouvez lancer l'initialisation à tout moment en utilisant le script situé dans le dossier des ressources du backend. 
+
+**ATTENTION : Ce script supprimera toutes les données existantes avant de recréer les données de test.**
+
+**Sur Windows :**
+```powershell
+cd backend/src/main/resources/
+./seed-data.bat
+```
+
+*Note : Ce script lancera le backend avec le profil `seed`. Une fois que vous voyez "Initialisation des données terminée" dans les logs, les données sont prêtes.*
+
+### 🔑 Comptes Utilisateurs (Mot de passe simple)
+
+Voici les comptes de test créés automatiquement :
+
+| Rôle | Email | Mot de passe |
+| :--- | :--- | :--- |
+| **Administrateur** | `admin@agileflow.com` | `Password@2024` |
+| **Manager** | `manager@agileflow.com` | `Password@2024` |
+| **Développeur** | `alice@agileflow.com` | `Password@2024` |
+| **Développeur** | `bob@agileflow.com` | `Password@2024` |
+
+### 📊 Données Initialisées
+- **Équipe** : Alpha Team (Gérée par le Manager, avec Alice et Bob)
+- **Projet** : AgileFlow Platform
+- **Backlog** : 3 User Stories (Gestion utilisateurs, Tableau Kanban, Notifications)
+- **Sprint** : Sprint 1 - Foundation (Actif)
+- **Tâches** : 3 tâches réparties entre Alice et Bob avec différents statuts (TODO, IN_PROGRESS, DONE)
+
 ## 📁 Structure du Projet
 
 ### Backend Structure

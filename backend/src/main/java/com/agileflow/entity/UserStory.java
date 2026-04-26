@@ -24,6 +24,7 @@ public class UserStory {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private Priority priority = Priority.MEDIUM;
 
     private Integer storyPoints;

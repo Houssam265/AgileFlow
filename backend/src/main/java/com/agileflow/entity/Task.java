@@ -3,6 +3,8 @@ package com.agileflow.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "tasks")
@@ -17,8 +19,10 @@ public class Task {
     private String titre;
     private String description;
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Statut statut = Statut.TODO;
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Priorite priorite = Priorite.MEDIUM;
     private LocalDate dateEcheance;
     @ManyToOne
@@ -31,6 +35,18 @@ public class Task {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Sprint sprint;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "story_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private UserStory story;
+
+    @ElementCollection
+    @CollectionTable(name = "task_labels", joinColumns = @JoinColumn(name = "task_id"))
+    @Column(name = "label")
+    @Builder.Default
+    private Set<String> labels = new HashSet<>();
 
     public enum Statut {
         TODO, IN_PROGRESS, REVIEW, DONE
