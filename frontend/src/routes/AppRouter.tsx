@@ -16,6 +16,7 @@ import KanbanBoard from '../pages/kanban/KanbanBoard';
 
 const AnalyticsDashboard = lazy(() => import('../pages/analytics/AnalyticsDashboard'));
 const StatsPage = lazy(() => import('../pages/stats/StatsPage'));
+const DiagramFlow = lazy(() => import('../pages/diagrams/DiagramFlow'));
 
 const LazyPage = ({ children }: { children: ReactNode }) => (
   <Suspense fallback={null}>{children}</Suspense>
@@ -45,6 +46,7 @@ const AppRouter = () => (
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/analytics" element={<LazyPage><AnalyticsDashboard /></LazyPage>} />
         <Route path="/stats" element={<LazyPage><StatsPage /></LazyPage>} />
+        <Route path="/diagrams" element={<LazyPage><DiagramFlow /></LazyPage>} />
         <Route path="/projects" element={<ProjectsListPage />} />
         <Route path="/users" element={<UsersListPage />} />
         <Route path="/users/:id" element={<UserProfilePage />} />

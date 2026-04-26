@@ -1,6 +1,7 @@
 package com.agileflow.repository;
 
 import com.agileflow.entity.Task;
+import com.agileflow.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,6 +26,16 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findBySprint_Project_Id(Long projectId);
 
     List<Task> findByStory_Id(Long storyId);
+
+    @Query("""
+            SELECT DISTINCT assigned
+            FROM Task t
+            JOIN t.sprint s
+            JOIN s.project p
+            JOIN t.assignedTo assigned
+            WHERE p.id = :projectId
+            """)
+    List<User> findDistinctAssigneesByProjectId(@Param("projectId") Long projectId);
 
     @Query("""
             SELECT COUNT(t.id)

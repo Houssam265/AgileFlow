@@ -4,6 +4,7 @@ export type StoryPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type TaskStatut = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
 export type TaskPriorite = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type AnalyticsPeriod = 'WEEK' | 'MONTH' | 'SPRINT';
+export type DiagramType = 'FLOWCHART' | 'PROCESS' | 'DECISION' | 'CUSTOM';
 
 export interface User {
   id: number;
@@ -263,4 +264,36 @@ export interface StatsData {
   averageVelocity: number;
   burndown: BurndownPoint[];
   velocity: VelocityPoint[];
+}
+
+export interface DiagramData {
+  id: number;
+  titre: string;
+  type: DiagramType;
+  etapes: string[];
+  json: string;
+  projectId: number;
+  projectName: string;
+  ownerId: number;
+  ownerName: string;
+  shared: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface CreateDiagramPayload {
+  titre: string;
+  type: DiagramType;
+  projectId: number;
+  etapes: string[];
+  json?: string;
+  shared: boolean;
+}
+
+export interface UpdateDiagramPayload {
+  titre: string;
+  type: DiagramType;
+  etapes: string[];
+  json?: string;
+  shared: boolean;
 }

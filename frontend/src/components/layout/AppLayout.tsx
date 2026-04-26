@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import {
   Assignment,
+  AccountTree,
   ChevronLeft,
   Dashboard,
   Group,
@@ -40,6 +41,7 @@ const NAV_ITEMS = [
   { label: 'Tableau de bord', path: '/dashboard', icon: <Dashboard /> },
   { label: 'Analytics', path: '/analytics', icon: <Insights /> },
   { label: 'Stats', path: '/stats', icon: <QueryStats /> },
+  { label: 'DiagramFlow', path: '/diagrams', icon: <AccountTree /> },
   { label: 'Projets', path: '/projects', icon: <Assignment /> },
   { label: 'Backlog', path: '/backlog', icon: <ViewKanban /> },
   { label: 'Kanban', path: '/kanban', icon: <ViewColumn /> },

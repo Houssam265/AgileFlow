@@ -245,6 +245,87 @@
         ],
         "url": "{{baseUrl}}/stats/export.csv?projectId={{projectId}}"
       }
+    },
+    {
+      "name": "List Diagrams By Project",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/diagrams?projectId={{projectId}}"
+      }
+    },
+    {
+      "name": "Get Diagram",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/diagrams/{{diagramId}}"
+      }
+    },
+    {
+      "name": "Create Diagram",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"titre\": \"Release Flow\",\n  \"type\": \"FLOWCHART\",\n  \"projectId\": {{projectId}},\n  \"etapes\": [\"Backlog\", \"Developpement\", \"Review\", \"Done\"],\n  \"json\": \"{\\\"mermaid\\\":\\\"flowchart TD\\\\n  S1[\\\\\\\"Backlog\\\\\\\"] --> S2[\\\\\\\"Developpement\\\\\\\"]\\\"}\",\n  \"shared\": true\n}"
+        },
+        "url": "{{baseUrl}}/diagrams"
+      }
+    },
+    {
+      "name": "Update Diagram",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"titre\": \"Release Flow v2\",\n  \"type\": \"PROCESS\",\n  \"etapes\": [\"Backlog\", \"Build\", \"QA\", \"Release\"],\n  \"json\": null,\n  \"shared\": true\n}"
+        },
+        "url": "{{baseUrl}}/diagrams/{{diagramId}}"
+      }
+    },
+    {
+      "name": "Delete Diagram",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/diagrams/{{diagramId}}"
+      }
     }
   ],
   "variable": [
@@ -266,6 +347,10 @@
     },
     {
       "key": "sprintId",
+      "value": "1"
+    },
+    {
+      "key": "diagramId",
       "value": "1"
     }
   ]

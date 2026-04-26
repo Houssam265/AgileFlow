@@ -30,6 +30,8 @@ public class DataInitializer implements CommandLineRunner {
     private final SprintRepository sprintRepository;
     private final TaskRepository taskRepository;
     private final ActivityLogRepository activityLogRepository;
+    private final DiagramRepository diagramRepository;
+    private final NotificationRepository notificationRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -39,6 +41,8 @@ public class DataInitializer implements CommandLineRunner {
         
         // Supprimer dans l'ordre inverse des dépendances
         activityLogRepository.deleteAll();
+        notificationRepository.deleteAll();
+        diagramRepository.deleteAll();
         taskRepository.deleteAll();
         userStoryRepository.deleteAll();
         sprintRepository.deleteAll();
