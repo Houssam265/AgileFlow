@@ -1,3 +1,4 @@
+import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +13,13 @@ import UsersListPage from '../pages/users/UsersListPage';
 import SprintsPage from '../pages/sprints/SprintsPage';
 import BacklogPage from '../pages/backlog/BacklogPage';
 import KanbanBoard from '../pages/kanban/KanbanBoard';
+
+const AnalyticsDashboard = lazy(() => import('../pages/analytics/AnalyticsDashboard'));
+const StatsPage = lazy(() => import('../pages/stats/StatsPage'));
+
+const LazyPage = ({ children }: { children: ReactNode }) => (
+  <Suspense fallback={null}>{children}</Suspense>
+);
 
 const ProtectedRoute = ({ allowedRoles }: { allowedRoles?: string[] }) => {
   const { token, user } = useAuth();
@@ -35,6 +43,8 @@ const AppRouter = () => (
 
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/analytics" element={<LazyPage><AnalyticsDashboard /></LazyPage>} />
+        <Route path="/stats" element={<LazyPage><StatsPage /></LazyPage>} />
         <Route path="/projects" element={<ProjectsListPage />} />
         <Route path="/users" element={<UsersListPage />} />
         <Route path="/users/:id" element={<UserProfilePage />} />

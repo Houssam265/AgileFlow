@@ -21,11 +21,13 @@ import {
   ChevronLeft,
   Dashboard,
   Group,
+  Insights,
   Logout,
   Menu as MenuIcon,
   People,
   Settings,
   Timeline,
+  QueryStats,
   ViewKanban,
   ViewColumn,
 } from '@mui/icons-material';
@@ -36,6 +38,8 @@ const DRAWER_WIDTH = 250;
 
 const NAV_ITEMS = [
   { label: 'Tableau de bord', path: '/dashboard', icon: <Dashboard /> },
+  { label: 'Analytics', path: '/analytics', icon: <Insights /> },
+  { label: 'Stats', path: '/stats', icon: <QueryStats /> },
   { label: 'Projets', path: '/projects', icon: <Assignment /> },
   { label: 'Backlog', path: '/backlog', icon: <ViewKanban /> },
   { label: 'Kanban', path: '/kanban', icon: <ViewColumn /> },

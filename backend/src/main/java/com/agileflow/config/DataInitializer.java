@@ -29,6 +29,7 @@ public class DataInitializer implements CommandLineRunner {
     private final UserStoryRepository userStoryRepository;
     private final SprintRepository sprintRepository;
     private final TaskRepository taskRepository;
+    private final ActivityLogRepository activityLogRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -37,6 +38,7 @@ public class DataInitializer implements CommandLineRunner {
         log.info("Nettoyage de la base de données avant initialisation...");
         
         // Supprimer dans l'ordre inverse des dépendances
+        activityLogRepository.deleteAll();
         taskRepository.deleteAll();
         userStoryRepository.deleteAll();
         sprintRepository.deleteAll();
@@ -207,6 +209,37 @@ public class DataInitializer implements CommandLineRunner {
                 .build();
 
         taskRepository.saveAll(List.of(task1, task2, task3));
+
+        ActivityLog log1 = ActivityLog.builder()
+                .actor(dev1)
+                .project(project)
+                .sprint(sprint)
+                .task(task1)
+                .action(ActivityLog.Action.TASK_COMPLETED)
+                .message("Tache terminee: " + task1.getTitre())
+                .activityDate(LocalDate.now().minusDays(2))
+                .createdAt(LocalDateTime.now().minusDays(2))
+                .build();
+        ActivityLog log2 = ActivityLog.builder()
+                .actor(dev2)
+                .project(project)
+                .sprint(sprint)
+                .task(task2)
+                .action(ActivityLog.Action.TASK_MOVED)
+                .message("Tache en cours: " + task2.getTitre())
+                .activityDate(LocalDate.now().minusDays(1))
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .build();
+        ActivityLog log3 = ActivityLog.builder()
+                .actor(manager)
+                .project(project)
+                .sprint(sprint)
+                .action(ActivityLog.Action.STORY_PLANNED)
+                .message("Stories planifiees pour " + sprint.getNom())
+                .activityDate(LocalDate.now())
+                .createdAt(LocalDateTime.now())
+                .build();
+        activityLogRepository.saveAll(List.of(log1, log2, log3));
 
         log.info("Initialisation des données terminée avec succès !");
     }

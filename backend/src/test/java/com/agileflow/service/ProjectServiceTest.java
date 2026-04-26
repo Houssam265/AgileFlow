@@ -48,6 +48,9 @@ class ProjectServiceTest {
     @Mock
     private TaskRepository taskRepository;
 
+    @Mock
+    private ActivityLogger activityLogger;
+
     @InjectMocks
     private ProjectService projectService;
 

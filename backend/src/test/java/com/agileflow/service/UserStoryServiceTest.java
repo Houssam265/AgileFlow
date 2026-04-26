@@ -53,6 +53,9 @@ class UserStoryServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ActivityLogger activityLogger;
+
     @InjectMocks
     private UserStoryService userStoryService;
 

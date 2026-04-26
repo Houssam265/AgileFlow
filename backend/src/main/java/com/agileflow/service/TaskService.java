@@ -1,6 +1,7 @@
 package com.agileflow.service;
 
 import com.agileflow.dto.*;
+import com.agileflow.entity.ActivityLog;
 import com.agileflow.entity.Project;
 import com.agileflow.entity.Sprint;
 import com.agileflow.entity.Task;
@@ -32,6 +33,7 @@ public class TaskService {
     private final SprintRepository sprintRepository;
     private final ProjectRepository projectRepository;
     private final UserStoryRepository userStoryRepository;
+    private final ActivityLogger activityLogger;
 
     private User currentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -151,7 +153,9 @@ public class TaskService {
                 .labels(request.labels() != null ? request.labels() : new HashSet<>())
                 .build();
 
-        return toDto(taskRepository.save(task));
+        Task saved = taskRepository.save(task);
+        activityLogger.log(actor, ActivityLog.Action.TASK_CREATED, "Tache creee: " + saved.getTitre(), project, sprint, saved);
+        return toDto(saved);
     }
 
     @Transactional
@@ -191,7 +195,9 @@ public class TaskService {
             task.setLabels(new HashSet<>());
         }
 
-        return toDto(taskRepository.save(task));
+        Task saved = taskRepository.save(task);
+        activityLogger.log(actor, ActivityLog.Action.TASK_UPDATED, "Tache mise a jour: " + saved.getTitre(), project, saved.getSprint(), saved);
+        return toDto(saved);
     }
 
     @Transactional
@@ -205,6 +211,7 @@ public class TaskService {
             throw new ForbiddenOperationException("Vous ne pouvez pas supprimer cette tâche");
         }
 
+        activityLogger.log(actor, ActivityLog.Action.TASK_DELETED, "Tache supprimee: " + task.getTitre(), project, task.getSprint(), null);
         taskRepository.delete(task);
     }
 
@@ -232,7 +239,12 @@ public class TaskService {
         }
 
         task.setStatut(request.statut());
-        return toDto(taskRepository.save(task));
+        Task saved = taskRepository.save(task);
+        ActivityLog.Action action = request.statut() == Task.Statut.DONE
+                ? ActivityLog.Action.TASK_COMPLETED
+                : ActivityLog.Action.TASK_MOVED;
+        activityLogger.log(actor, action, "Tache deplacee: " + saved.getTitre(), project, saved.getSprint(), saved);
+        return toDto(saved);
     }
 
     @Transactional
@@ -250,6 +262,8 @@ public class TaskService {
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur assigné introuvable"));
         
         task.setAssignedTo(assignedTo);
-        return toDto(taskRepository.save(task));
+        Task saved = taskRepository.save(task);
+        activityLogger.log(actor, ActivityLog.Action.TASK_ASSIGNED, "Tache assignee: " + saved.getTitre(), project, saved.getSprint(), saved);
+        return toDto(saved);
     }
 }

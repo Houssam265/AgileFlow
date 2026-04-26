@@ -1,6 +1,7 @@
 package com.agileflow.service;
 
 import com.agileflow.dto.*;
+import com.agileflow.entity.ActivityLog;
 import com.agileflow.entity.Backlog;
 import com.agileflow.entity.Project;
 import com.agileflow.entity.Sprint;
@@ -29,6 +30,7 @@ public class UserStoryService {
     private final ProjectRepository projectRepository;
     private final SprintRepository sprintRepository;
     private final UserRepository userRepository;
+    private final ActivityLogger activityLogger;
 
     private User currentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -116,7 +118,9 @@ public class UserStoryService {
                 .acceptanceCriteria(request.acceptanceCriteria())
                 .backlog(backlog)
                 .build();
-        return toDto(userStoryRepository.save(story));
+        UserStory saved = userStoryRepository.save(story);
+        activityLogger.log(actor, ActivityLog.Action.STORY_CREATED, "User story creee: " + saved.getTitre(), project, null, null);
+        return toDto(saved);
     }
 
     @Transactional
@@ -132,7 +136,9 @@ public class UserStoryService {
         story.setPriority(request.priority());
         story.setStoryPoints(request.storyPoints());
         story.setAcceptanceCriteria(request.acceptanceCriteria());
-        return toDto(userStoryRepository.save(story));
+        UserStory saved = userStoryRepository.save(story);
+        activityLogger.log(actor, ActivityLog.Action.STORY_UPDATED, "User story mise a jour: " + saved.getTitre(), project, saved.getSprint(), null);
+        return toDto(saved);
     }
 
     @Transactional
@@ -142,6 +148,7 @@ public class UserStoryService {
         if (!canManageProject(actor, story.getBacklog().getProject())) {
             throw new ForbiddenOperationException("Vous ne pouvez pas supprimer cette user story.");
         }
+        activityLogger.log(actor, ActivityLog.Action.STORY_DELETED, "User story supprimee: " + story.getTitre(), story.getBacklog().getProject(), story.getSprint(), null);
         userStoryRepository.delete(story);
     }
 
@@ -159,7 +166,9 @@ public class UserStoryService {
             throw new ForbiddenOperationException("Le sprint cible n'appartient pas au meme projet.");
         }
         story.setSprint(sprint);
-        return toDto(userStoryRepository.save(story));
+        UserStory saved = userStoryRepository.save(story);
+        activityLogger.log(actor, ActivityLog.Action.STORY_PLANNED, "User story planifiee: " + saved.getTitre(), project, sprint, null);
+        return toDto(saved);
     }
 
     @Transactional
@@ -169,7 +178,10 @@ public class UserStoryService {
         if (!canManageProject(actor, story.getBacklog().getProject())) {
             throw new ForbiddenOperationException("Vous ne pouvez pas deplanifier cette user story.");
         }
+        Sprint previousSprint = story.getSprint();
         story.setSprint(null);
-        return toDto(userStoryRepository.save(story));
+        UserStory saved = userStoryRepository.save(story);
+        activityLogger.log(actor, ActivityLog.Action.STORY_UNPLANNED, "User story deplanifiee: " + saved.getTitre(), saved.getBacklog().getProject(), previousSprint, null);
+        return toDto(saved);
     }
 }

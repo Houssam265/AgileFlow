@@ -154,6 +154,97 @@
         ],
         "url": "{{baseUrl}}/user-stories/{{storyId}}/assign-sprint/{{sprintId}}"
       }
+    },
+    {
+      "name": "Analytics Dashboard - Week",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/analytics?period=WEEK"
+      }
+    },
+    {
+      "name": "Analytics Dashboard - Sprint",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/analytics?period=SPRINT&sprintId={{sprintId}}"
+      }
+    },
+    {
+      "name": "Export Analytics PDF",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/analytics/export.pdf?period=MONTH"
+      }
+    },
+    {
+      "name": "Stats Overview",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/stats?projectId={{projectId}}"
+      }
+    },
+    {
+      "name": "Stats Sprint",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/stats?projectId={{projectId}}&sprintId={{sprintId}}"
+      }
+    },
+    {
+      "name": "Export Stats PDF",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/stats/export.pdf?projectId={{projectId}}&sprintId={{sprintId}}"
+      }
+    },
+    {
+      "name": "Export Stats CSV",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/stats/export.csv?projectId={{projectId}}"
+      }
     }
   ],
   "variable": [

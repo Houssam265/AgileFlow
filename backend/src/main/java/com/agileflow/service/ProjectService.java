@@ -3,6 +3,7 @@ package com.agileflow.service;
 import com.agileflow.dto.CreateProjectRequest;
 import com.agileflow.dto.ProjectDTO;
 import com.agileflow.dto.UpdateProjectRequest;
+import com.agileflow.entity.ActivityLog;
 import com.agileflow.entity.Project;
 import com.agileflow.entity.User;
 import com.agileflow.exception.BadRequestException;
@@ -27,6 +28,7 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final SprintRepository sprintRepository;
     private final TaskRepository taskRepository;
+    private final ActivityLogger activityLogger;
 
     private User currentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -126,6 +128,7 @@ public class ProjectService {
                 .manager(manager)
                 .build();
         projectRepository.save(project);
+        activityLogger.log(actor, ActivityLog.Action.PROJECT_CREATED, "Projet cree: " + project.getNom(), project, null, null);
         return toProjectDTO(project);
     }
 
@@ -150,6 +153,7 @@ public class ProjectService {
         project.setStatut(request.status());
         project.setManager(manager);
         projectRepository.save(project);
+        activityLogger.log(actor, ActivityLog.Action.PROJECT_UPDATED, "Projet mis a jour: " + project.getNom(), project, null, null);
         return toProjectDTO(project);
     }
 

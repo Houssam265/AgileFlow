@@ -3,6 +3,7 @@ export type ProjectStatus = 'ACTIF' | 'ARCHIVE' | 'TERMINE';
 export type StoryPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type TaskStatut = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
 export type TaskPriorite = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type AnalyticsPeriod = 'WEEK' | 'MONTH' | 'SPRINT';
 
 export interface User {
   id: number;
@@ -198,4 +199,68 @@ export interface UpdateTaskPayload {
   assignedToId?: number | null;
   dateEcheance?: string | null;
   labels?: string[];
+}
+
+export interface AnalyticsMemberStats {
+  userId: number;
+  memberName: string;
+  role: Role;
+  activityCount: number;
+  completedTasks: number;
+}
+
+export interface ActivityHeatmapItem {
+  date: string;
+  activityCount: number;
+}
+
+export interface AnalyticsTrendItem {
+  date: string;
+  activityCount: number;
+  completedTasks: number;
+}
+
+export interface AnalyticsData {
+  period: AnalyticsPeriod;
+  startDate: string;
+  endDate: string;
+  sprintId: number | null;
+  totalActivities: number;
+  completedTasks: number;
+  activeMembers: number;
+  memberStats: AnalyticsMemberStats[];
+  heatmap: ActivityHeatmapItem[];
+  trend: AnalyticsTrendItem[];
+}
+
+export interface BurndownPoint {
+  date: string;
+  remainingTasks: number;
+  idealRemainingTasks: number;
+}
+
+export interface VelocityPoint {
+  sprintId: number;
+  sprintName: string;
+  totalTasks: number;
+  completedTasks: number;
+  completedStoryPoints: number;
+  capacityPoints: number;
+}
+
+export interface StatsData {
+  projectId: number | null;
+  sprintId: number | null;
+  startDate: string;
+  endDate: string;
+  totalTasks: number;
+  todoTasks: number;
+  inProgressTasks: number;
+  reviewTasks: number;
+  completedTasks: number;
+  completionRate: number;
+  activeSprints: number;
+  averageVelocity: number;
+  burndown: BurndownPoint[];
+  velocity: VelocityPoint[];
 }

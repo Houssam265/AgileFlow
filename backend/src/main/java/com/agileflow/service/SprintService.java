@@ -1,12 +1,16 @@
 package com.agileflow.service;
 
 import com.agileflow.dto.SprintDTO;
+import com.agileflow.entity.ActivityLog;
 import com.agileflow.entity.Project;
 import com.agileflow.entity.Sprint;
+import com.agileflow.entity.User;
 import com.agileflow.exception.ResourceNotFoundException;
 import com.agileflow.repository.ProjectRepository;
 import com.agileflow.repository.SprintRepository;
+import com.agileflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +23,14 @@ public class SprintService {
 
     private final SprintRepository sprintRepository;
     private final ProjectRepository projectRepository;
+    private final UserRepository userRepository;
+    private final ActivityLogger activityLogger;
+
+    private User currentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur courant introuvable"));
+    }
 
     @Transactional(readOnly = true)
     public List<SprintDTO> getSprintsByProject(Long projectId) {
@@ -29,6 +41,7 @@ public class SprintService {
 
     @Transactional
     public SprintDTO createSprint(SprintDTO dto) {
+        User actor = currentUser();
         Project project = projectRepository.findById(dto.getProjetId())
                 .orElseThrow(() -> new ResourceNotFoundException("Projet introuvable"));
 
@@ -43,11 +56,14 @@ public class SprintService {
                 .project(project)
                 .build();
 
-        return toDto(sprintRepository.save(sprint));
+        Sprint saved = sprintRepository.save(sprint);
+        activityLogger.log(actor, ActivityLog.Action.SPRINT_CREATED, "Sprint planifie: " + saved.getNom(), project, saved, null);
+        return toDto(saved);
     }
 
     @Transactional
     public SprintDTO updateSprint(Long id, SprintDTO dto) {
+        User actor = currentUser();
         Sprint sprint = sprintRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Sprint introuvable"));
 
@@ -57,7 +73,9 @@ public class SprintService {
         sprint.setDateFin(dto.getDateFin());
         sprint.setCapacitePoints(dto.getCapacitePoints());
         
-        return toDto(sprintRepository.save(sprint));
+        Sprint saved = sprintRepository.save(sprint);
+        activityLogger.log(actor, ActivityLog.Action.SPRINT_UPDATED, "Sprint mis a jour: " + saved.getNom(), saved.getProject(), saved, null);
+        return toDto(saved);
     }
 
     @Transactional
@@ -67,18 +85,24 @@ public class SprintService {
 
     @Transactional
     public SprintDTO startSprint(Long id) {
+        User actor = currentUser();
         Sprint sprint = sprintRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Sprint introuvable"));
         sprint.setStatut(Sprint.Statut.ACTIF);
-        return toDto(sprintRepository.save(sprint));
+        Sprint saved = sprintRepository.save(sprint);
+        activityLogger.log(actor, ActivityLog.Action.SPRINT_STARTED, "Sprint demarre: " + saved.getNom(), saved.getProject(), saved, null);
+        return toDto(saved);
     }
 
     @Transactional
     public SprintDTO finishSprint(Long id) {
+        User actor = currentUser();
         Sprint sprint = sprintRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Sprint introuvable"));
         sprint.setStatut(Sprint.Statut.FERME);
-        return toDto(sprintRepository.save(sprint));
+        Sprint saved = sprintRepository.save(sprint);
+        activityLogger.log(actor, ActivityLog.Action.SPRINT_FINISHED, "Sprint termine: " + saved.getNom(), saved.getProject(), saved, null);
+        return toDto(saved);
     }
 
     private SprintDTO toDto(Sprint sprint) {
