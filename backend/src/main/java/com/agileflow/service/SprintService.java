@@ -25,6 +25,7 @@ public class SprintService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ActivityLogger activityLogger;
+    private final EmailNotificationService emailNotificationService;
 
     private User currentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -91,6 +92,7 @@ public class SprintService {
         sprint.setStatut(Sprint.Statut.ACTIF);
         Sprint saved = sprintRepository.save(sprint);
         activityLogger.log(actor, ActivityLog.Action.SPRINT_STARTED, "Sprint demarre: " + saved.getNom(), saved.getProject(), saved, null);
+        emailNotificationService.sendSprintStarted(saved);
         return toDto(saved);
     }
 

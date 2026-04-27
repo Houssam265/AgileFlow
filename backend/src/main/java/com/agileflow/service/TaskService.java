@@ -34,6 +34,7 @@ public class TaskService {
     private final ProjectRepository projectRepository;
     private final UserStoryRepository userStoryRepository;
     private final ActivityLogger activityLogger;
+    private final EmailNotificationService emailNotificationService;
 
     private User currentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -155,6 +156,7 @@ public class TaskService {
 
         Task saved = taskRepository.save(task);
         activityLogger.log(actor, ActivityLog.Action.TASK_CREATED, "Tache creee: " + saved.getTitre(), project, sprint, saved);
+        emailNotificationService.sendTaskAssigned(saved);
         return toDto(saved);
     }
 
@@ -164,6 +166,7 @@ public class TaskService {
         Task task = getTaskOrThrow(taskId);
         Project project = task.getSprint() != null ? task.getSprint().getProject() : 
                           (task.getStory() != null ? task.getStory().getBacklog().getProject() : null);
+        Long previousAssignedToId = task.getAssignedTo() != null ? task.getAssignedTo().getId() : null;
 
         if (project != null && !canManageProject(actor, project)) {
             throw new ForbiddenOperationException("Vous ne pouvez pas modifier cette tâche");
@@ -197,6 +200,10 @@ public class TaskService {
 
         Task saved = taskRepository.save(task);
         activityLogger.log(actor, ActivityLog.Action.TASK_UPDATED, "Tache mise a jour: " + saved.getTitre(), project, saved.getSprint(), saved);
+        Long newAssignedToId = saved.getAssignedTo() != null ? saved.getAssignedTo().getId() : null;
+        if (newAssignedToId != null && !newAssignedToId.equals(previousAssignedToId)) {
+            emailNotificationService.sendTaskAssigned(saved);
+        }
         return toDto(saved);
     }
 
@@ -264,6 +271,7 @@ public class TaskService {
         task.setAssignedTo(assignedTo);
         Task saved = taskRepository.save(task);
         activityLogger.log(actor, ActivityLog.Action.TASK_ASSIGNED, "Tache assignee: " + saved.getTitre(), project, saved.getSprint(), saved);
+        emailNotificationService.sendTaskAssigned(saved);
         return toDto(saved);
     }
 }

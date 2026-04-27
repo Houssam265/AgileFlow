@@ -10,6 +10,7 @@ import type { UserDetail } from '../../types';
 import { fetchUserById } from '../../api/usersApi';
 import { formatDateTime } from '../../utils/formatDate';
 import AddEditUserModal from '../../components/users/AddEditUserModal';
+import NotificationPreferences from '../../components/users/NotificationPreferences';
 
 const roleChip = (role: string) => {
   const color = role === 'ROLE_ADMIN' ? 'error' : role === 'ROLE_MANAGER' ? 'warning' : 'info';
@@ -116,6 +117,12 @@ const UserProfilePage = () => {
           </List>
         )}
       </Paper>
+
+      {current?.id === data.id && (
+        <Box sx={{ mt: 3 }}>
+          <NotificationPreferences title="Notifications email" />
+        </Box>
+      )}
 
       <AddEditUserModal
         open={editOpen}

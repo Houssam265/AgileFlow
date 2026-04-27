@@ -13,6 +13,7 @@ import UsersListPage from '../pages/users/UsersListPage';
 import SprintsPage from '../pages/sprints/SprintsPage';
 import BacklogPage from '../pages/backlog/BacklogPage';
 import KanbanBoard from '../pages/kanban/KanbanBoard';
+import SettingsPage from '../pages/settings/SettingsPage';
 
 const AnalyticsDashboard = lazy(() => import('../pages/analytics/AnalyticsDashboard'));
 const StatsPage = lazy(() => import('../pages/stats/StatsPage'));
@@ -55,7 +56,7 @@ const AppRouter = () => (
         <Route path="/sprints" element={<SprintsPage />} />
         <Route path="/backlog" element={<BacklogPage />} />
         <Route path="/kanban" element={<KanbanBoard />} />
-        <Route path="/settings" element={<div>Parametres - a venir</div>} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['ROLE_ADMIN']} />}>

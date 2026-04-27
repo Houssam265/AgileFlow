@@ -19,6 +19,9 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, Long> {
     @EntityGraph(attributePaths = "team")
     List<TeamMember> findByUser_Id(Long userId);
 
+    @EntityGraph(attributePaths = {"user", "team"})
+    List<TeamMember> findByTeam_Manager_Id(Long managerId);
+
     Optional<TeamMember> findByTeam_IdAndUser_Id(Long teamId, Long userId);
 
     void deleteByTeam_IdAndUser_Id(Long teamId, Long userId);

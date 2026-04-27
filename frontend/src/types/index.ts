@@ -5,6 +5,7 @@ export type TaskStatut = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
 export type TaskPriorite = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type AnalyticsPeriod = 'WEEK' | 'MONTH' | 'SPRINT';
 export type DiagramType = 'FLOWCHART' | 'PROCESS' | 'DECISION' | 'CUSTOM';
+export type EmailNotificationType = 'SPRINT_START' | 'TASK_ASSIGNED' | 'DEADLINE' | 'MENTION';
 
 export interface User {
   id: number;
@@ -58,6 +59,27 @@ export interface UpdateUserPayload {
   active?: boolean;
   /** Nouveau mot de passe (optionnel, admin uniquement côté UI) */
   password?: string;
+}
+
+export interface EmailPreferences {
+  userId: number;
+  sprintStartEnabled: boolean;
+  taskAssignedEnabled: boolean;
+  deadlineEnabled: boolean;
+  mentionEnabled: boolean;
+}
+
+export interface UpdateEmailPreferencesPayload {
+  sprintStartEnabled?: boolean;
+  taskAssignedEnabled?: boolean;
+  deadlineEnabled?: boolean;
+  mentionEnabled?: boolean;
+}
+
+export interface EmailPreview {
+  type: EmailNotificationType;
+  subject: string;
+  html: string;
 }
 
 /** Liste équipes */
