@@ -17,8 +17,9 @@ import {
 import { Add } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { createProject, deleteProject, fetchProjects, updateProject } from '../../api/projectsApi';
+import { fetchTeams } from '../../api/teamsApi';
 import { fetchUsers } from '../../api/usersApi';
-import type { CreateProjectPayload, ProjectListItem, UserListItem } from '../../types';
+import type { CreateProjectPayload, ProjectListItem, TeamListItem, UserListItem } from '../../types';
 import CreateProjectModal from '../../components/projects/CreateProjectModal';
 import ProjectCard from '../../components/projects/ProjectCard';
 
@@ -28,6 +29,7 @@ const ProjectsListPage = () => {
 
   const [rows, setRows] = useState<ProjectListItem[]>([]);
   const [users, setUsers] = useState<UserListItem[]>([]);
+  const [teams, setTeams] = useState<TeamListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -41,9 +43,10 @@ const ProjectsListPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const [projects, allUsers] = await Promise.all([fetchProjects(), fetchUsers()]);
+      const [projects, allUsers, teamRows] = await Promise.all([fetchProjects(), fetchUsers(), fetchTeams()]);
       setRows(projects);
       setUsers(allUsers.filter((user) => user.active !== false));
+      setTeams(teamRows);
     } catch {
       setError('Impossible de charger les projets.');
     } finally {
@@ -158,6 +161,7 @@ const ProjectsListPage = () => {
         open={dialogOpen}
         saving={saving}
         users={users}
+        teams={teams}
         currentUserId={current?.id}
         currentUserRole={current?.role}
         project={editTarget}

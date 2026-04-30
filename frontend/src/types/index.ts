@@ -127,6 +127,8 @@ export interface ProjectListItem {
   status: ProjectStatus;
   managerId: number | null;
   managerName: string | null;
+  teamId?: number | null;
+  teamName?: string | null;
   sprintCount: number;
   taskCount: number;
 }
@@ -138,6 +140,7 @@ export interface CreateProjectPayload {
   endDate?: string;
   status: ProjectStatus;
   managerId: number;
+  teamId?: number | null;
 }
 
 export interface UpdateProjectPayload extends CreateProjectPayload {}
@@ -202,6 +205,15 @@ export interface TaskItem {
   storyId: number | null;
   dateEcheance: string | null;
   labels: string[];
+}
+
+export interface CommentItem {
+  id: number;
+  contenu: string;
+  auteur: UserListItem;
+  taskId: number;
+  mentions: string[];
+  createdAt: string | null;
 }
 
 export interface CreateTaskPayload {

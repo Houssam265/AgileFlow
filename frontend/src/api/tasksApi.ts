@@ -1,5 +1,5 @@
 import axiosInstance from './axiosInstance';
-import type { CreateTaskPayload, TaskItem, TaskStatut, UpdateTaskPayload } from '../types';
+import type { CommentItem, CreateTaskPayload, TaskItem, TaskStatut, UpdateTaskPayload } from '../types';
 
 export const fetchTasksBySprint = async (sprintId: number) => {
   const { data } = await axiosInstance.get<TaskItem[]>(`/tasks?sprintId=${sprintId}`);
@@ -33,4 +33,14 @@ export const assignTask = async (taskId: number, assignedToId: number) => {
 
 export const deleteTask = async (taskId: number) => {
   await axiosInstance.delete(`/tasks/${taskId}`);
+};
+
+export const fetchTaskComments = async (taskId: number) => {
+  const { data } = await axiosInstance.get<CommentItem[]>(`/tasks/${taskId}/comments`);
+  return data;
+};
+
+export const createTaskComment = async (taskId: number, contenu: string) => {
+  const { data } = await axiosInstance.post<CommentItem>(`/tasks/${taskId}/comments`, { contenu });
+  return data;
 };

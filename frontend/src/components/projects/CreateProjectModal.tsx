@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField } from '@mui/material';
-import type { CreateProjectPayload, ProjectListItem, ProjectStatus, UserListItem } from '../../types';
+import type { CreateProjectPayload, ProjectListItem, ProjectStatus, TeamListItem, UserListItem } from '../../types';
 
 const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'ACTIF', label: 'Actif' },
@@ -12,6 +12,7 @@ type Props = {
   open: boolean;
   saving: boolean;
   users: UserListItem[];
+  teams: TeamListItem[];
   currentUserId?: number;
   currentUserRole?: string;
   project?: ProjectListItem | null;
@@ -21,13 +22,14 @@ type Props = {
 
 const today = new Date().toISOString().slice(0, 10);
 
-const CreateProjectModal = ({ open, saving, users, currentUserId, currentUserRole, project, onClose, onSubmit }: Props) => {
+const CreateProjectModal = ({ open, saving, users, teams, currentUserId, currentUserRole, project, onClose, onSubmit }: Props) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState<ProjectStatus>('ACTIF');
   const [managerId, setManagerId] = useState<number>(0);
+  const [teamId, setTeamId] = useState<number | ''>('');
   const [error, setError] = useState<string | null>(null);
 
   const managerOptions = useMemo(
@@ -43,6 +45,7 @@ const CreateProjectModal = ({ open, saving, users, currentUserId, currentUserRol
     setStartDate(project?.startDate ?? today);
     setEndDate(project?.endDate ?? '');
     setStatus(project?.status ?? 'ACTIF');
+    setTeamId(project?.teamId ?? '');
     if (project?.managerId) {
       setManagerId(project.managerId);
       return;
@@ -80,6 +83,7 @@ const CreateProjectModal = ({ open, saving, users, currentUserId, currentUserRol
       endDate: endDate || undefined,
       status,
       managerId,
+      teamId: teamId || null,
     });
   };
 
@@ -107,6 +111,19 @@ const CreateProjectModal = ({ open, saving, users, currentUserId, currentUserRol
           {managerOptions.map((user) => (
             <MenuItem key={user.id} value={user.id}>
               {user.firstName} {user.lastName} ({user.role.replace('ROLE_', '')})
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          label="Equipe"
+          value={teamId}
+          onChange={(event) => setTeamId(event.target.value === '' ? '' : Number(event.target.value))}
+        >
+          <MenuItem value="">Aucune equipe</MenuItem>
+          {teams.map((team) => (
+            <MenuItem key={team.id} value={team.id}>
+              {team.name}
             </MenuItem>
           ))}
         </TextField>

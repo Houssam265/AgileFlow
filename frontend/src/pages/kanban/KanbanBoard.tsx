@@ -63,10 +63,10 @@ const KanbanBoard = () => {
   const canManage = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_MANAGER';
 
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<number | ''>('');
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   
   const [sprints, setSprints] = useState<SprintItem[]>([]);
-  const [selectedSprintId, setSelectedSprintId] = useState<number | ''>('');
+  const [selectedSprintId, setSelectedSprintId] = useState<number | null>(null);
   
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
@@ -93,7 +93,7 @@ const KanbanBoard = () => {
       const [projData, usersData] = await Promise.all([fetchProjects(), fetchUsers()]);
       setProjects(projData);
       setUsers(usersData);
-      setSelectedProjectId(projData[0]?.id || '');
+      setSelectedProjectId(projData[0]?.id || null);
     } catch {
       setError('Impossible de charger les données initiales.');
       setLoading(false);
@@ -103,14 +103,14 @@ const KanbanBoard = () => {
   const loadSprints = useCallback(async () => {
     if (!selectedProjectId) {
       setSprints([]);
-      setSelectedSprintId('');
+      setSelectedSprintId(null);
       return;
     }
     try {
       const data = await fetchSprintsByProject(selectedProjectId);
       setSprints(data);
       const activeSprint = data.find((s) => s.statut === 'EN_COURS');
-      setSelectedSprintId(activeSprint?.id || data[0]?.id || '');
+      setSelectedSprintId(activeSprint?.id || data[0]?.id || null);
     } catch {
       setError('Impossible de charger les sprints.');
     }
@@ -225,6 +225,8 @@ const KanbanBoard = () => {
     return acc;
   }, {} as Record<TaskStatut, TaskItem[]>);
 
+  const selectedProject = projects.find((project) => project.id === selectedProjectId);
+
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3 }}>
@@ -240,8 +242,8 @@ const KanbanBoard = () => {
             <Select
               labelId="kanban-project-label"
               label="Projet"
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value as number)}
+              value={selectedProjectId ?? ''}
+              onChange={(e) => setSelectedProjectId(e.target.value === '' ? null : Number(e.target.value))}
             >
               {projects.map((p) => (
                 <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
@@ -254,8 +256,8 @@ const KanbanBoard = () => {
             <Select
               labelId="kanban-sprint-label"
               label="Sprint"
-              value={selectedSprintId}
-              onChange={(e) => setSelectedSprintId(e.target.value as number)}
+              value={selectedSprintId ?? ''}
+              onChange={(e) => setSelectedSprintId(e.target.value === '' ? null : Number(e.target.value))}
               disabled={sprints.length === 0}
             >
               {sprints.map((s) => (
@@ -324,6 +326,7 @@ const KanbanBoard = () => {
         task={selectedTask}
         users={users}
         canManage={canManage}
+        projectTeamId={selectedProject?.teamId ?? null}
         onClose={() => setDetailModalOpen(false)}
         onSubmit={handleUpdateTask}
         onDelete={handleDeleteTask}

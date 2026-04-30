@@ -1,5 +1,5 @@
 import axiosInstance from './axiosInstance';
-import type { CreateTeamPayload, TeamDetail, TeamListItem, UpdateTeamPayload } from '../types';
+import type { CreateTeamPayload, TeamDetail, TeamListItem, UpdateTeamPayload, UserListItem } from '../types';
 
 export const fetchTeams = async (q?: string) => {
   const { data } = await axiosInstance.get<TeamListItem[]>('/teams', { params: q ? { q } : {} });
@@ -8,6 +8,11 @@ export const fetchTeams = async (q?: string) => {
 
 export const fetchTeamById = async (id: number) => {
   const { data } = await axiosInstance.get<TeamDetail>(`/teams/${id}`);
+  return data;
+};
+
+export const fetchTeamMembers = async (teamId: number) => {
+  const { data } = await axiosInstance.get<UserListItem[]>(`/teams/${teamId}/members`);
   return data;
 };
 
