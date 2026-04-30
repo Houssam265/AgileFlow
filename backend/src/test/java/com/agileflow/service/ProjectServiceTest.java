@@ -11,6 +11,7 @@ import com.agileflow.exception.ForbiddenOperationException;
 import com.agileflow.repository.ProjectRepository;
 import com.agileflow.repository.SprintRepository;
 import com.agileflow.repository.TaskRepository;
+import com.agileflow.repository.TeamRepository;
 import com.agileflow.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,9 @@ class ProjectServiceTest {
 
     @Mock
     private TaskRepository taskRepository;
+
+    @Mock
+    private TeamRepository teamRepository;
 
     @Mock
     private ActivityLogger activityLogger;
@@ -107,7 +111,8 @@ class ProjectServiceTest {
                 LocalDate.of(2026, 5, 1),
                 LocalDate.of(2026, 7, 15),
                 Project.Statut.ACTIF,
-                manager.getId()
+                manager.getId(),
+                null
         ));
 
         ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
@@ -141,7 +146,8 @@ class ProjectServiceTest {
                 LocalDate.of(2026, 4, 1),
                 LocalDate.of(2026, 6, 1),
                 Project.Statut.ACTIF,
-                otherManager.getId()
+                otherManager.getId(),
+                null
         )))
                 .isInstanceOf(ForbiddenOperationException.class)
                 .hasMessageContaining("transferer");

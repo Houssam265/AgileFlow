@@ -52,6 +52,14 @@ public class EmailNotificationService {
         });
     }
 
+    public void sendMention(User recipient, Task task, String authorName) {
+        if (recipient == null || task == null) {
+            return;
+        }
+        EmailTemplateService.RenderedEmail email = emailTemplateService.buildMention(recipient, task, authorName);
+        sendToUserIfEnabled(recipient, EmailNotificationType.MENTION, email);
+    }
+
     private void sendToUserIfEnabled(User user, EmailNotificationType type, EmailTemplateService.RenderedEmail email) {
         if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
             return;

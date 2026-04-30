@@ -30,6 +30,12 @@ public class TeamController {
         return teamService.getTeamById(id);
     }
 
+    @GetMapping("/{id}/members")
+    @PreAuthorize("isAuthenticated()")
+    public List<UserDTO> getTeamMembers(@PathVariable Long id) {
+        return teamService.getTeamMembers(id);
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_MANAGER')")
     public ResponseEntity<TeamDTO> createTeam(@Valid @RequestBody CreateTeamRequest request) {

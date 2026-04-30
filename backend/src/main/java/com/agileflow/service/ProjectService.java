@@ -5,6 +5,7 @@ import com.agileflow.dto.ProjectDTO;
 import com.agileflow.dto.UpdateProjectRequest;
 import com.agileflow.entity.ActivityLog;
 import com.agileflow.entity.Project;
+import com.agileflow.entity.Team;
 import com.agileflow.entity.User;
 import com.agileflow.exception.BadRequestException;
 import com.agileflow.exception.ForbiddenOperationException;
@@ -12,6 +13,7 @@ import com.agileflow.exception.ResourceNotFoundException;
 import com.agileflow.repository.ProjectRepository;
 import com.agileflow.repository.SprintRepository;
 import com.agileflow.repository.TaskRepository;
+import com.agileflow.repository.TeamRepository;
 import com.agileflow.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +30,7 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final SprintRepository sprintRepository;
     private final TaskRepository taskRepository;
+    private final TeamRepository teamRepository;
     private final ActivityLogger activityLogger;
 
     private User currentUser() {
@@ -66,12 +69,25 @@ public class ProjectService {
         }
     }
 
+    private Team validateTeam(Long teamId, User actor) {
+        if (teamId == null) {
+            return null;
+        }
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new ResourceNotFoundException("Equipe introuvable"));
+        if (actor.getRole() == User.Role.ROLE_MANAGER && !team.getManager().getId().equals(actor.getId())) {
+            throw new ForbiddenOperationException("Un manager ne peut rattacher qu'une equipe qu'il gere.");
+        }
+        return team;
+    }
+
     ProjectDTO toProjectDTO(Project project) {
         long sprintCount = sprintRepository.findByProjectId(project.getId()).size();
         long taskCount = sprintRepository.findByProjectId(project.getId()).stream()
                 .mapToLong(sprint -> taskRepository.findBySprintId(sprint.getId()).size())
                 .sum();
         User manager = project.getManager();
+        Team team = project.getTeam();
         return new ProjectDTO(
                 project.getId(),
                 project.getNom(),
@@ -81,6 +97,8 @@ public class ProjectService {
                 project.getStatut().name(),
                 manager != null ? manager.getId() : null,
                 manager != null ? (manager.getPrenom() + " " + manager.getNom()).trim() : null,
+                team != null ? team.getId() : null,
+                team != null ? team.getName() : null,
                 sprintCount,
                 taskCount
         );
@@ -118,6 +136,7 @@ public class ProjectService {
         if (actor.getRole() == User.Role.ROLE_MANAGER && !actor.getId().equals(manager.getId())) {
             throw new ForbiddenOperationException("Un manager ne peut creer qu'un projet dont il est responsable.");
         }
+        Team team = validateTeam(request.teamId(), actor);
 
         Project project = Project.builder()
                 .nom(request.name())
@@ -126,6 +145,7 @@ public class ProjectService {
                 .dateFin(request.endDate())
                 .statut(request.status())
                 .manager(manager)
+                .team(team)
                 .build();
         projectRepository.save(project);
         activityLogger.log(actor, ActivityLog.Action.PROJECT_CREATED, "Projet cree: " + project.getNom(), project, null, null);
@@ -145,6 +165,7 @@ public class ProjectService {
         if (actor.getRole() == User.Role.ROLE_MANAGER && !actor.getId().equals(manager.getId())) {
             throw new ForbiddenOperationException("Un manager ne peut pas transferer un projet a un autre responsable.");
         }
+        Team team = validateTeam(request.teamId(), actor);
 
         project.setNom(request.name());
         project.setDescription(request.description());
@@ -152,6 +173,7 @@ public class ProjectService {
         project.setDateFin(request.endDate());
         project.setStatut(request.status());
         project.setManager(manager);
+        project.setTeam(team);
         projectRepository.save(project);
         activityLogger.log(actor, ActivityLog.Action.PROJECT_UPDATED, "Projet mis a jour: " + project.getNom(), project, null, null);
         return toProjectDTO(project);

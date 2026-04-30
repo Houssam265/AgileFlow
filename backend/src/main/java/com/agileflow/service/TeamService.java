@@ -83,6 +83,16 @@ public class TeamService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public List<UserDTO> getTeamMembers(Long teamId) {
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new ResourceNotFoundException("Équipe introuvable"));
+        return teamMemberRepository.findByTeam_IdOrderByJoinedAtAsc(team.getId()).stream()
+                .map(TeamMember::getUser)
+                .map(UserService::toUserDTO)
+                .toList();
+    }
+
     @Transactional
     public TeamDTO createTeam(CreateTeamRequest request) {
         User actor = currentUser();

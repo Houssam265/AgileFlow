@@ -9,6 +9,8 @@ public record ProjectDTO(
         String status,
         Long managerId,
         String managerName,
+        Long teamId,
+        String teamName,
         Long sprintCount,
         Long taskCount
 ) {}

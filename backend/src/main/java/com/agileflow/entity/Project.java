@@ -29,6 +29,12 @@ public class Project {
     @EqualsAndHashCode.Exclude
     private User manager;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Team team;
+
     @OneToMany(mappedBy = "project")
     @Builder.Default
     @ToString.Exclude
