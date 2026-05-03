@@ -48,8 +48,11 @@ const DiagramGallery = ({ diagrams, selectedId, onSelect, onDelete }: DiagramGal
               </IconButton>
             </Tooltip>
           </Stack>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }} flexWrap="wrap">
             <Chip size="small" label={diagram.type} />
+            {diagram.taskTitle && (
+              <Chip size="small" label={`Tâche: ${diagram.taskTitle}`} color="info" variant="outlined" />
+            )}
             <Chip size="small" icon={diagram.shared ? <Share /> : <VisibilityOff />} label={diagram.shared ? 'Partage' : 'Prive'} color={diagram.shared ? 'primary' : 'default'} />
           </Stack>
         </Paper>

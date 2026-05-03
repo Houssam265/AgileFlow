@@ -14,6 +14,8 @@ public record DiagramDTO(
         String projectName,
         Long ownerId,
         String ownerName,
+        Long taskId,
+        String taskTitle,
         boolean shared,
         String createdAt,
         String updatedAt

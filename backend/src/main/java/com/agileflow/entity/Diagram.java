@@ -47,6 +47,12 @@ public class Diagram {
     @EqualsAndHashCode.Exclude
     private User owner;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "task_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Task task;
+
     @Builder.Default
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

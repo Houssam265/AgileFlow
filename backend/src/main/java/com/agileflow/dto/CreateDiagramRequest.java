@@ -18,6 +18,8 @@ public record CreateDiagramRequest(
         @NotNull(message = "Le projet est obligatoire.")
         Long projectId,
 
+        Long taskId,
+
         @NotNull(message = "Les etapes sont obligatoires.")
         @Size(min = 1, max = 40, message = "Le diagramme doit contenir entre 1 et 40 etapes.")
         List<@NotBlank(message = "Une etape ne peut pas etre vide.") @Size(max = 200, message = "Une etape ne doit pas depasser 200 caracteres.") String> etapes,

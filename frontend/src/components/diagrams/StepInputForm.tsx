@@ -12,10 +12,12 @@ import {
   Stack,
   TextField,
   Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import { Add, Delete, Save } from '@mui/icons-material';
-import type { CreateDiagramPayload, DiagramData, DiagramType, ProjectListItem, UpdateDiagramPayload } from '../../types';
+import type { CreateDiagramPayload, DiagramData, DiagramType, ProjectListItem, TaskItem, UpdateDiagramPayload } from '../../types';
 import { cleanDiagramSteps, stringifyDiagramJson } from '../../utils/diagramGeneration';
+import { fetchTasksByProject } from '../../api/tasksApi';
 
 const DIAGRAM_TYPES: Array<{ value: DiagramType; label: string }> = [
   { value: 'FLOWCHART', label: 'Flowchart' },
@@ -38,24 +40,53 @@ const StepInputForm = ({ projects, initialDiagram, defaultProjectId = '', saving
   const [titre, setTitre] = useState('');
   const [type, setType] = useState<DiagramType>('FLOWCHART');
   const [projectId, setProjectId] = useState<number | ''>('');
+  const [taskId, setTaskId] = useState<number | '' | null>(null);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
   const [shared, setShared] = useState(false);
   const [steps, setSteps] = useState<string[]>(['']);
+
+  const loadTasks = useMemo(() => async (projId: number) => {
+    setTasksLoading(true);
+    try {
+      setTasks(await fetchTasksByProject(projId));
+    } catch {
+      setTasks([]);
+    } finally {
+      setTasksLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (initialDiagram) {
       setTitre(initialDiagram.titre);
       setType(initialDiagram.type);
       setProjectId(initialDiagram.projectId);
+      setTaskId(initialDiagram.taskId);
       setShared(initialDiagram.shared);
       setSteps(initialDiagram.etapes.length ? initialDiagram.etapes : ['']);
+      if (initialDiagram.projectId) {
+        loadTasks(initialDiagram.projectId);
+      }
       return;
     }
     setTitre('');
     setType('FLOWCHART');
     setProjectId(defaultProjectId || projects[0]?.id || '');
+    setTaskId(null);
     setShared(false);
     setSteps(['']);
-  }, [defaultProjectId, initialDiagram, projects]);
+  }, [defaultProjectId, initialDiagram, projects, loadTasks]);
+
+  useEffect(() => {
+    if (projectId && typeof projectId === 'number') {
+      loadTasks(projectId);
+      setTaskId(null);
+    } else {
+      setTasks([]);
+      setTaskId(null);
+    }
+  }, [projectId, loadTasks]);
 
   const cleanSteps = useMemo(() => cleanDiagramSteps(steps), [steps]);
   const canSubmit = titre.trim().length > 0 && Boolean(projectId) && cleanSteps.length > 0;
@@ -66,11 +97,12 @@ const StepInputForm = ({ projects, initialDiagram, defaultProjectId = '', saving
       titre: titre.trim() || 'Diagramme',
       type,
       projectId: Number(projectId),
+      taskId: taskId && typeof taskId === 'number' ? taskId : null,
       etapes: cleanSteps,
       json: stringifyDiagramJson(titre || 'Diagramme', type, cleanSteps),
       shared,
     });
-  }, [cleanSteps, onDraftChange, projectId, shared, titre, type]);
+  }, [cleanSteps, onDraftChange, projectId, shared, taskId, titre, type]);
 
   const updateStep = (index: number, value: string) => {
     setSteps((current) => current.map((step, stepIndex) => (stepIndex === index ? value : step)));
@@ -86,6 +118,7 @@ const StepInputForm = ({ projects, initialDiagram, defaultProjectId = '', saving
       titre: titre.trim(),
       type,
       projectId: Number(projectId),
+      taskId: taskId && typeof taskId === 'number' ? taskId : null,
       etapes: cleanSteps,
       json: stringifyDiagramJson(titre, type, cleanSteps),
       shared,
@@ -131,6 +164,27 @@ const StepInputForm = ({ projects, initialDiagram, defaultProjectId = '', saving
             </Select>
           </FormControl>
         </Stack>
+        <FormControl size="small" fullWidth disabled={!projectId}>
+          <InputLabel id="diagram-task-label">Tâche associée</InputLabel>
+          <Select
+            labelId="diagram-task-label"
+            label="Tâche associée"
+            value={taskId ?? ''}
+            onChange={(event) => setTaskId(event.target.value as number | '' | null)}
+          >
+            <MenuItem value="">Aucune</MenuItem>
+            {tasksLoading ? (
+              <MenuItem disabled>
+                <CircularProgress size={16} sx={{ mr: 1 }} />
+                Chargement...
+              </MenuItem>
+            ) : (
+              tasks.map((task) => (
+                <MenuItem key={task.id} value={task.id}>{task.titre}</MenuItem>
+              ))
+            )}
+          </Select>
+        </FormControl>
 
         <Stack spacing={1}>
           {steps.map((step, index) => (

@@ -54,6 +54,12 @@ public class Task {
     @Builder.Default
     private Set<String> labels = new HashSet<>();
 
+    @OneToMany(mappedBy = "task", fetch = FetchType.LAZY)
+    @Builder.Default
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private java.util.List<Diagram> diagrams = new java.util.ArrayList<>();
+
     public enum Statut {
         TODO, IN_PROGRESS, REVIEW, DONE
     }

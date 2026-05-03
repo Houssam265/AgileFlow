@@ -311,6 +311,8 @@ export interface DiagramData {
   projectName: string;
   ownerId: number;
   ownerName: string;
+  taskId: number | null;
+  taskTitle: string | null;
   shared: boolean;
   createdAt: string | null;
   updatedAt: string | null;
@@ -320,6 +322,7 @@ export interface CreateDiagramPayload {
   titre: string;
   type: DiagramType;
   projectId: number;
+  taskId?: number | null;
   etapes: string[];
   json?: string;
   shared: boolean;
@@ -328,6 +331,7 @@ export interface CreateDiagramPayload {
 export interface UpdateDiagramPayload {
   titre: string;
   type: DiagramType;
+  taskId?: number | null;
   etapes: string[];
   json?: string;
   shared: boolean;

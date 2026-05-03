@@ -12,12 +12,12 @@ public class DeadlineScheduler {
 
     private final PriorityUpdater priorityUpdater;
 
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedRate = 3600000)
     public void runUrgentDeadlineScan() {
         int updatedCount = priorityUpdater.updateUrgentTasks();
         int reminders24h = priorityUpdater.send24hReminders();
         int reminders1h = priorityUpdater.send1hReminders();
-        log.info("Scan des priorites intelligentes termine. {} tache(s) mise(s) a jour.", updatedCount);
-        log.info("Rappels deadline envoyes. 24h: {}, 1h: {}.", reminders24h, reminders1h);
+        log.debug("Scan des priorites intelligentes termine. {} tache(s) mise(s) a jour.", updatedCount);
+        log.debug("Rappels deadline envoyes. 24h: {}, 1h: {}.", reminders24h, reminders1h);
     }
 }

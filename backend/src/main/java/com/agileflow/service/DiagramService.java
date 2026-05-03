@@ -6,6 +6,7 @@ import com.agileflow.dto.UpdateDiagramRequest;
 import com.agileflow.entity.Diagram;
 import com.agileflow.entity.Notification;
 import com.agileflow.entity.Project;
+import com.agileflow.entity.Task;
 import com.agileflow.entity.User;
 import com.agileflow.exception.ForbiddenOperationException;
 import com.agileflow.exception.ResourceNotFoundException;
@@ -37,6 +38,7 @@ public class DiagramService {
     private final UserRepository userRepository;
     private final TaskRepository taskRepository;
     private final NotificationRepository notificationRepository;
+    private final DiagramNotificationService diagramNotificationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private User currentUser() {
@@ -73,11 +75,18 @@ public class DiagramService {
             throw new ForbiddenOperationException("Vous ne pouvez pas creer un diagramme dans ce projet.");
         }
 
+        Task task = null;
+        if (request.taskId() != null) {
+            task = taskRepository.findById(request.taskId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Tache introuvable"));
+        }
+
         Diagram diagram = Diagram.builder()
                 .titre(request.titre().trim())
                 .type(request.type())
                 .project(project)
                 .owner(actor)
+                .task(task)
                 .etapesJson(writeSteps(request.etapes()))
                 .json(resolveJson(request.titre(), request.type(), request.etapes(), request.json()))
                 .shared(request.shared())
@@ -85,10 +94,19 @@ public class DiagramService {
                 .updatedAt(LocalDateTime.now())
                 .build();
         diagramRepository.save(diagram);
+        
+        DiagramDTO diagramDTO = toDTO(diagram);
+        String actorName = (actor.getPrenom() != null ? actor.getPrenom() : "") + " " + (actor.getNom() != null ? actor.getNom() : "");
+        actorName = actorName.trim();
+        
+        diagramNotificationService.notifyDiagramCreated(project.getId(), diagramDTO, actorName);
+        
         if (diagram.isShared()) {
             notifyShared(diagram, actor);
+            diagramNotificationService.notifyDiagramShared(project.getId(), diagramDTO, actorName);
         }
-        return toDTO(diagram);
+        
+        return diagramDTO;
     }
 
     @Transactional
@@ -105,10 +123,17 @@ public class DiagramService {
         diagram.setJson(resolveJson(request.titre(), request.type(), request.etapes(), request.json()));
         diagram.setShared(request.shared());
         diagramRepository.save(diagram);
+        
+        DiagramDTO diagramDTO = toDTO(diagram);
+        String actorName = (actor.getPrenom() != null ? actor.getPrenom() : "") + " " + (actor.getNom() != null ? actor.getNom() : "");
+        actorName = actorName.trim();
+        
         if (becameShared) {
             notifyShared(diagram, actor);
+            diagramNotificationService.notifyDiagramShared(diagram.getProject().getId(), diagramDTO, actorName);
         }
-        return toDTO(diagram);
+        
+        return diagramDTO;
     }
 
     @Transactional
@@ -154,6 +179,7 @@ public class DiagramService {
     private DiagramDTO toDTO(Diagram diagram) {
         Project project = diagram.getProject();
         User owner = diagram.getOwner();
+        Task task = diagram.getTask();
         return new DiagramDTO(
                 diagram.getId(),
                 diagram.getTitre(),
@@ -164,6 +190,8 @@ public class DiagramService {
                 project != null ? project.getNom() : null,
                 owner != null ? owner.getId() : null,
                 owner != null ? (owner.getPrenom() + " " + owner.getNom()).trim() : null,
+                task != null ? task.getId() : null,
+                task != null ? task.getTitre() : null,
                 diagram.isShared(),
                 diagram.getCreatedAt() != null ? diagram.getCreatedAt().toString() : null,
                 diagram.getUpdatedAt() != null ? diagram.getUpdatedAt().toString() : null
