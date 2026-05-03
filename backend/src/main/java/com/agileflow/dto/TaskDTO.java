@@ -8,6 +8,7 @@ public record TaskDTO(
         String description,
         String statut,
         String priorite,
+        boolean isUrgent,
         Long assignedToId,
         String assignedToName,
         Long sprintId,

@@ -20,6 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -27,6 +30,8 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class TaskService {
+
+    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
 
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
@@ -65,18 +70,20 @@ public class TaskService {
     }
 
     private TaskDTO toDto(Task task) {
+        boolean isUrgent = task.getStatut() != Task.Statut.DONE && task.isUrgent();
         return new TaskDTO(
                 task.getId(),
                 task.getTitre(),
                 task.getDescription(),
                 task.getStatut() != null ? task.getStatut().name() : null,
                 task.getPriorite() != null ? task.getPriorite().name() : null,
+                isUrgent,
                 task.getAssignedTo() != null ? task.getAssignedTo().getId() : null,
                 task.getAssignedTo() != null ? task.getAssignedTo().getPrenom() + " " + task.getAssignedTo().getNom() : null,
                 task.getSprint() != null ? task.getSprint().getId() : null,
                 task.getSprint() != null ? "Sprint " + task.getSprint().getNumero() : null,
                 task.getStory() != null ? task.getStory().getId() : null,
-                task.getDateEcheance() != null ? task.getDateEcheance().toString() : null,
+                formatDeadline(task.getDateEcheance()),
                 task.getLabels() != null ? new HashSet<>(task.getLabels()) : new HashSet<>()
         );
     }
@@ -137,9 +144,9 @@ public class TaskService {
                     .orElseThrow(() -> new ResourceNotFoundException("Utilisateur assigné introuvable"));
         }
 
-        LocalDate dateEcheance = null;
+        LocalDateTime dateEcheance = null;
         if (request.dateEcheance() != null && !request.dateEcheance().isEmpty()) {
-            dateEcheance = LocalDate.parse(request.dateEcheance());
+            dateEcheance = parseDeadline(request.dateEcheance());
         }
 
         Task task = Task.builder()
@@ -151,6 +158,9 @@ public class TaskService {
                 .story(story)
                 .assignedTo(assignedTo)
                 .dateEcheance(dateEcheance)
+                .isUrgent(isWithinUrgentWindow(dateEcheance))
+                .deadline24hReminderSent(false)
+                .deadline1hReminderSent(false)
                 .labels(request.labels() != null ? request.labels() : new HashSet<>())
                 .build();
 
@@ -167,6 +177,7 @@ public class TaskService {
         Project project = task.getSprint() != null ? task.getSprint().getProject() : 
                           (task.getStory() != null ? task.getStory().getBacklog().getProject() : null);
         Long previousAssignedToId = task.getAssignedTo() != null ? task.getAssignedTo().getId() : null;
+        LocalDateTime previousDeadline = task.getDateEcheance();
 
         if (project != null && !canManageProject(actor, project)) {
             throw new ForbiddenOperationException("Vous ne pouvez pas modifier cette tâche");
@@ -187,10 +198,15 @@ public class TaskService {
         }
 
         if (request.dateEcheance() != null && !request.dateEcheance().isEmpty()) {
-            task.setDateEcheance(LocalDate.parse(request.dateEcheance()));
+            task.setDateEcheance(parseDeadline(request.dateEcheance()));
         } else {
             task.setDateEcheance(null);
         }
+        if (!sameDeadline(previousDeadline, task.getDateEcheance())) {
+            task.setDeadline24hReminderSent(false);
+            task.setDeadline1hReminderSent(false);
+        }
+        task.setUrgent(task.getStatut() != Task.Statut.DONE && isWithinUrgentWindow(task.getDateEcheance()));
         
         if (request.labels() != null) {
             task.setLabels(new HashSet<>(request.labels()));
@@ -246,6 +262,11 @@ public class TaskService {
         }
 
         task.setStatut(request.statut());
+        if (request.statut() == Task.Statut.DONE) {
+            task.setDeadline24hReminderSent(true);
+            task.setDeadline1hReminderSent(true);
+        }
+        task.setUrgent(request.statut() != Task.Statut.DONE && isWithinUrgentWindow(task.getDateEcheance()));
         Task saved = taskRepository.save(task);
         ActivityLog.Action action = request.statut() == Task.Statut.DONE
                 ? ActivityLog.Action.TASK_COMPLETED
@@ -273,5 +294,26 @@ public class TaskService {
         activityLogger.log(actor, ActivityLog.Action.TASK_ASSIGNED, "Tache assignee: " + saved.getTitre(), project, saved.getSprint(), saved);
         emailNotificationService.sendTaskAssigned(saved);
         return toDto(saved);
+    }
+
+    private LocalDateTime parseDeadline(String value) {
+        try {
+            return LocalDateTime.parse(value);
+        } catch (DateTimeParseException ignored) {
+            return LocalDate.parse(value).atStartOfDay();
+        }
+    }
+
+    private String formatDeadline(LocalDateTime dateEcheance) {
+        return dateEcheance != null ? dateEcheance.format(DATE_TIME_FORMAT) : null;
+    }
+
+    private boolean sameDeadline(LocalDateTime previousDeadline, LocalDateTime newDeadline) {
+        return previousDeadline == null ? newDeadline == null : previousDeadline.equals(newDeadline);
+    }
+
+    private boolean isWithinUrgentWindow(LocalDateTime dateEcheance) {
+        LocalDateTime now = LocalDateTime.now();
+        return dateEcheance != null && dateEcheance.isAfter(now) && !dateEcheance.isAfter(now.plusHours(24));
     }
 }

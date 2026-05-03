@@ -198,6 +198,7 @@ export interface TaskItem {
   description: string | null;
   statut: TaskStatut;
   priorite: TaskPriorite;
+  isUrgent: boolean;
   assignedToId: number | null;
   assignedToName: string | null;
   sprintId: number | null;

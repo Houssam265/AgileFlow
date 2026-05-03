@@ -1,5 +1,5 @@
 import { useDraggable } from '@dnd-kit/core';
-import { Avatar, Box, Card, CardContent, Chip, Stack, Typography, useTheme } from '@mui/material';
+import { Avatar, Box, Card, CardContent, Chip, Stack, Tooltip, Typography, useTheme } from '@mui/material';
 import { AccessTime } from '@mui/icons-material';
 import type { TaskItem } from '../../types';
 
@@ -17,6 +17,8 @@ const PRIORITIES = {
 
 const TaskCard = ({ task, onClick }: TaskCardProps) => {
   const theme = useTheme();
+  const isCompleted = task.statut === 'DONE';
+  const showUrgent = task.isUrgent && !isCompleted;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `task-${task.id}`,
     data: task,
@@ -39,16 +41,61 @@ const TaskCard = ({ task, onClick }: TaskCardProps) => {
         mb: 2,
         cursor: 'grab',
         opacity: isDragging ? 0.5 : 1,
-        borderLeft: `4px solid ${theme.palette[priorityConfig.color].main}`,
+        position: 'relative',
+        overflow: 'visible',
+        border: showUrgent ? `2px solid ${theme.palette.error.main}` : '1px solid transparent',
+        borderLeft: `4px solid ${showUrgent ? theme.palette.error.main : theme.palette[priorityConfig.color].main}`,
+        boxShadow: showUrgent ? `0 0 0 3px ${theme.palette.error.light}22` : undefined,
         '&:hover': {
           boxShadow: theme.shadows[4],
         },
         transition: 'box-shadow 0.2s',
       }}
     >
+      {showUrgent && (
+        <Tooltip title="Deadline dans moins de 24h" arrow>
+          <Chip
+            label="URGENT"
+            color="error"
+            size="small"
+            sx={{
+              position: 'absolute',
+              top: -10,
+              right: 12,
+              zIndex: 2,
+              fontWeight: 800,
+              letterSpacing: 0.6,
+              boxShadow: theme.shadows[3],
+              '@keyframes urgentPulse': {
+                '0%': {
+                  transform: 'scale(1)',
+                  boxShadow: `0 0 0 0 ${theme.palette.error.main}66`,
+                },
+                '70%': {
+                  transform: 'scale(1.06)',
+                  boxShadow: `0 0 0 8px ${theme.palette.error.main}00`,
+                },
+                '100%': {
+                  transform: 'scale(1)',
+                  boxShadow: `0 0 0 0 ${theme.palette.error.main}00`,
+                },
+              },
+              animation: 'urgentPulse 1.4s infinite',
+            }}
+          />
+        </Tooltip>
+      )}
       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1} gap={1}>
-          <Typography variant="subtitle2" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
+          <Typography
+            variant="subtitle2"
+            fontWeight={600}
+            sx={{
+              wordBreak: 'break-word',
+              textDecoration: isCompleted ? 'line-through' : 'none',
+              color: isCompleted ? 'text.secondary' : 'text.primary',
+            }}
+          >
             {task.titre}
           </Typography>
           <Avatar
@@ -75,7 +122,11 @@ const TaskCard = ({ task, onClick }: TaskCardProps) => {
           {task.dateEcheance && (
             <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary', gap: 0.5 }}>
               <AccessTime sx={{ fontSize: 14 }} />
-              <Typography variant="caption" fontSize="0.7rem">
+              <Typography
+                variant="caption"
+                fontSize="0.7rem"
+                sx={{ textDecoration: isCompleted ? 'line-through' : 'none' }}
+              >
                 {new Date(task.dateEcheance).toLocaleDateString()}
               </Typography>
             </Box>

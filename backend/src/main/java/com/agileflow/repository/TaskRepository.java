@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface TaskRepository extends JpaRepository<Task, Long> {
@@ -26,6 +27,67 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findBySprint_Project_Id(Long projectId);
 
     List<Task> findByStory_Id(Long storyId);
+
+    @Query("""
+            SELECT DISTINCT t
+            FROM Task t
+            LEFT JOIN FETCH t.assignedTo assigned
+            LEFT JOIN FETCH t.sprint s
+            LEFT JOIN FETCH s.project p
+            LEFT JOIN FETCH t.story story
+            LEFT JOIN FETCH story.backlog backlog
+            LEFT JOIN FETCH backlog.project backlogProject
+            WHERE t.dateEcheance IS NOT NULL
+              AND t.isUrgent = false
+              AND t.statut <> com.agileflow.entity.Task.Statut.DONE
+              AND t.dateEcheance BETWEEN :windowStart AND :windowEnd
+            """)
+    List<Task> findTasksBecomingUrgent(
+            @Param("windowStart") LocalDateTime windowStart,
+            @Param("windowEnd") LocalDateTime windowEnd
+    );
+
+    @Query("""
+            SELECT DISTINCT t
+            FROM Task t
+            LEFT JOIN FETCH t.assignedTo assigned
+            LEFT JOIN FETCH t.sprint s
+            LEFT JOIN FETCH s.project p
+            LEFT JOIN FETCH t.story story
+            LEFT JOIN FETCH story.backlog backlog
+            LEFT JOIN FETCH backlog.project backlogProject
+            WHERE t.dateEcheance IS NOT NULL
+              AND t.deadline24hReminderSent = false
+              AND t.statut <> com.agileflow.entity.Task.Statut.DONE
+              AND assigned IS NOT NULL
+              AND t.dateEcheance >= :now
+              AND t.dateEcheance <= :deadlineThreshold
+            """)
+    List<Task> findTasksFor24hReminder(
+            @Param("now") LocalDateTime now,
+            @Param("deadlineThreshold") LocalDateTime deadlineThreshold
+    );
+
+    @Query("""
+            SELECT DISTINCT t
+            FROM Task t
+            LEFT JOIN FETCH t.assignedTo assigned
+            LEFT JOIN FETCH t.sprint s
+            LEFT JOIN FETCH s.project p
+            LEFT JOIN FETCH t.story story
+            LEFT JOIN FETCH story.backlog backlog
+            LEFT JOIN FETCH backlog.project backlogProject
+            WHERE t.dateEcheance IS NOT NULL
+              AND t.deadline1hReminderSent = false
+              AND t.statut <> com.agileflow.entity.Task.Statut.DONE
+              AND assigned IS NOT NULL
+              AND t.dateEcheance >= :now
+              AND t.dateEcheance <= :deadlineThreshold
+            """)
+    List<Task> findTasksFor1hReminder(
+            @Param("now") LocalDateTime now,
+            @Param("deadlineThreshold") LocalDateTime deadlineThreshold
+    );
 
     @Query("""
             SELECT DISTINCT assigned
@@ -57,23 +119,24 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     );
 
     @Query("""
-            SELECT t.dateEcheance, COUNT(t.id)
+            SELECT FUNCTION('DATE', t.dateEcheance), COUNT(t.id)
             FROM Task t
             LEFT JOIN t.sprint s
             LEFT JOIN s.project p
             WHERE t.statut = com.agileflow.entity.Task.Statut.DONE
               AND t.dateEcheance IS NOT NULL
-              AND t.dateEcheance BETWEEN :startDate AND :endDate
+              AND t.dateEcheance >= :startDateAtStart
+              AND t.dateEcheance < :endDateExclusive
               AND (:projectId IS NULL OR p.id = :projectId)
               AND (:sprintId IS NULL OR s.id = :sprintId)
               AND (:managerId IS NULL OR p.manager.id = :managerId)
               AND (:actorId IS NULL OR t.assignedTo.id = :actorId)
-            GROUP BY t.dateEcheance
-            ORDER BY t.dateEcheance ASC
+            GROUP BY FUNCTION('DATE', t.dateEcheance)
+            ORDER BY FUNCTION('DATE', t.dateEcheance) ASC
             """)
     List<Object[]> aggregateCompletedTasksByDueDate(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
+            @Param("startDateAtStart") LocalDateTime startDateAtStart,
+            @Param("endDateExclusive") LocalDateTime endDateExclusive,
             @Param("projectId") Long projectId,
             @Param("sprintId") Long sprintId,
             @Param("managerId") Long managerId,

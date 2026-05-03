@@ -8,6 +8,7 @@ import com.agileflow.repository.TeamMemberRepository;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,12 @@ public class EmailNotificationService {
     private final EmailPreferencesService emailPreferencesService;
     private final EmailTemplateService emailTemplateService;
     private final TeamMemberRepository teamMemberRepository;
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+    @Value("${spring.mail.username}")
+    private String fromEmail;
+    @Value("${app.mail.from-name:AgileFlow Support}")
+    private String fromName;
 
     public void sendTaskAssigned(Task task) {
         User assignee = task.getAssignedTo();
@@ -60,6 +67,33 @@ public class EmailNotificationService {
         sendToUserIfEnabled(recipient, EmailNotificationType.MENTION, email);
     }
 
+    public void sendUrgentDeadlineAlert(Task task) {
+        if (task == null || task.getAssignedTo() == null) {
+            return;
+        }
+        String kanbanUrl = frontendUrl.endsWith("/") ? frontendUrl + "kanban" : frontendUrl + "/kanban";
+        EmailTemplateService.RenderedEmail email = emailTemplateService.buildUrgentDeadlineAlert(
+                task.getAssignedTo(),
+                task,
+                kanbanUrl
+        );
+        sendToUserIfEnabled(task.getAssignedTo(), EmailNotificationType.DEADLINE, email);
+    }
+
+    public void sendDeadlineReminder(Task task, String reminderLabel) {
+        if (task == null || task.getAssignedTo() == null) {
+            return;
+        }
+        String kanbanUrl = frontendUrl.endsWith("/") ? frontendUrl + "kanban" : frontendUrl + "/kanban";
+        EmailTemplateService.RenderedEmail email = emailTemplateService.buildDeadlineReminder(
+                task.getAssignedTo(),
+                task,
+                kanbanUrl,
+                reminderLabel
+        );
+        sendToUserIfEnabled(task.getAssignedTo(), EmailNotificationType.DEADLINE, email);
+    }
+
     private void sendToUserIfEnabled(User user, EmailNotificationType type, EmailTemplateService.RenderedEmail email) {
         if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
             return;
@@ -70,6 +104,7 @@ public class EmailNotificationService {
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            helper.setFrom(fromName + " <" + fromEmail + ">");
             helper.setTo(user.getEmail());
             helper.setSubject(email.subject());
             helper.setText(email.html(), true);

@@ -16,7 +16,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Date;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -101,8 +103,10 @@ public class StatsService {
     private List<BurndownPointDTO> buildBurndown(Long projectId, Long sprintId, Scope scope, DateRange range, long totalTasks) {
         Map<LocalDate, Long> completedByDate = new HashMap<>();
         for (Object[] row : taskRepository.aggregateCompletedTasksByDueDate(
-                range.startDate(), range.endDate(), projectId, sprintId, scope.managerId(), scope.actorId())) {
-            completedByDate.put((LocalDate) row[0], number(row[1]));
+                range.startDate().atStartOfDay(),
+                range.endDate().plusDays(1).atStartOfDay(),
+                projectId, sprintId, scope.managerId(), scope.actorId())) {
+            completedByDate.put(toLocalDate(row[0]), number(row[1]));
         }
 
         long durationDays = Math.max(1, ChronoUnit.DAYS.between(range.startDate(), range.endDate()));
@@ -160,6 +164,19 @@ public class StatsService {
 
     private double round(double value) {
         return Math.round(value * 100.0) / 100.0;
+    }
+
+    private LocalDate toLocalDate(Object value) {
+        if (value instanceof LocalDate localDate) {
+            return localDate;
+        }
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime.toLocalDate();
+        }
+        if (value instanceof Date sqlDate) {
+            return sqlDate.toLocalDate();
+        }
+        throw new IllegalArgumentException("Type de date non supporte: " + value);
     }
 
     private record Scope(Long managerId, Long actorId) {

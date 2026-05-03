@@ -52,4 +52,27 @@ class EmailTemplateServiceTest {
         assertThat(email.html()).contains("CRITICAL");
         assertThat(email.html()).contains("03/05/2026");
     }
+
+    @Test
+    void buildUrgentDeadlineAlert_containsProfessionalUrgentContent() {
+        User recipient = User.builder().prenom("Alice").nom("Dev").email("alice@agileflow.dev").build();
+        Task task = Task.builder()
+                .titre("Corriger le Kanban urgent")
+                .dateEcheance(LocalDate.of(2026, 5, 4))
+                .sprint(Sprint.builder().project(Project.builder().nom("AgileFlow Platform").build()).build())
+                .build();
+
+        EmailTemplateService.RenderedEmail email = emailTemplateService.buildUrgentDeadlineAlert(
+                recipient,
+                task,
+                "http://localhost:5173/kanban"
+        );
+
+        assertThat(email.subject()).contains("Alerte urgente");
+        assertThat(email.html()).contains("URGENT");
+        assertThat(email.html()).contains("Corriger le Kanban urgent");
+        assertThat(email.html()).contains("04/05/2026");
+        assertThat(email.html()).contains("AgileFlow Platform");
+        assertThat(email.html()).contains("http://localhost:5173/kanban");
+    }
 }

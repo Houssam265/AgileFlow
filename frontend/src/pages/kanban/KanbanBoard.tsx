@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
@@ -61,6 +61,31 @@ const COLUMNS: { id: TaskStatut; title: string }[] = [
 const KanbanBoard = () => {
   const { user } = useAuth();
   const canManage = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_MANAGER';
+
+  const sortTasksForColumn = useCallback((columnTasks: TaskItem[]) => (
+    [...columnTasks].sort((a, b) => {
+      const aIsUrgent = a.isUrgent && a.statut !== 'DONE';
+      const bIsUrgent = b.isUrgent && b.statut !== 'DONE';
+
+      if (aIsUrgent !== bIsUrgent) {
+        return aIsUrgent ? -1 : 1;
+      }
+
+      if (a.dateEcheance && b.dateEcheance) {
+        return new Date(a.dateEcheance).getTime() - new Date(b.dateEcheance).getTime();
+      }
+
+      if (a.dateEcheance) {
+        return -1;
+      }
+
+      if (b.dateEcheance) {
+        return 1;
+      }
+
+      return a.id - b.id;
+    })
+  ), []);
 
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
@@ -167,7 +192,11 @@ const KanbanBoard = () => {
     if (!task || task.statut === newStatut) return;
 
     // Optimistic update
-    setTasks((current) => current.map((t) => (t.id === taskId ? { ...t, statut: newStatut } : t)));
+    setTasks((current) => current.map((t) => (
+      t.id === taskId
+        ? { ...t, statut: newStatut, isUrgent: newStatut === 'DONE' ? false : t.isUrgent }
+        : t
+    )));
 
     try {
       await moveTask(taskId, newStatut);
@@ -220,10 +249,12 @@ const KanbanBoard = () => {
     }
   };
 
-  const tasksByColumn = COLUMNS.reduce((acc, col) => {
-    acc[col.id] = tasks.filter((t) => t.statut === col.id);
-    return acc;
-  }, {} as Record<TaskStatut, TaskItem[]>);
+  const tasksByColumn = useMemo(() => (
+    COLUMNS.reduce((acc, col) => {
+      acc[col.id] = sortTasksForColumn(tasks.filter((t) => t.statut === col.id));
+      return acc;
+    }, {} as Record<TaskStatut, TaskItem[]>)
+  ), [sortTasksForColumn, tasks]);
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId);
 

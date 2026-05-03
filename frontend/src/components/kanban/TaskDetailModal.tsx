@@ -366,7 +366,7 @@ const TaskDetailModal = ({ open, saving, task, users, onClose, onSubmit, onDelet
           
           <TextField
             label="Date d'échéance"
-            type="date"
+            type="datetime-local"
             value={currentForm.dateEcheance ?? ''}
             onChange={(event) => handleChange('dateEcheance', event.target.value || null)}
             fullWidth

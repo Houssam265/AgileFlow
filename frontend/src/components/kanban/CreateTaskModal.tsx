@@ -123,7 +123,7 @@ const CreateTaskModal = ({ open, saving, users, onClose, onSubmit }: Props) => {
           
           <TextField
             label="Date d'échéance"
-            type="date"
+            type="datetime-local"
             value={form.dateEcheance ?? ''}
             onChange={(event) => handleChange('dateEcheance', event.target.value || null)}
             fullWidth

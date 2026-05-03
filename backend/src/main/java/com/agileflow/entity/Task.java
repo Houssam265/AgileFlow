@@ -2,7 +2,7 @@ package com.agileflow.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -24,7 +24,13 @@ public class Task {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private Priorite priorite = Priorite.MEDIUM;
-    private LocalDate dateEcheance;
+    private LocalDateTime dateEcheance;
+    @Builder.Default
+    private boolean isUrgent = false;
+    @Builder.Default
+    private boolean deadline24hReminderSent = false;
+    @Builder.Default
+    private boolean deadline1hReminderSent = false;
     @ManyToOne
     @JoinColumn(name = "assigned_to")
     @ToString.Exclude
