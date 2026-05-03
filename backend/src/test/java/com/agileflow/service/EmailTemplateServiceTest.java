@@ -7,6 +7,7 @@ import com.agileflow.entity.User;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,7 +42,7 @@ class EmailTemplateServiceTest {
                 .description("Configurer les notifications enrichies.")
                 .priorite(Task.Priorite.CRITICAL)
                 .statut(Task.Statut.IN_PROGRESS)
-                .dateEcheance(LocalDate.of(2026, 5, 3))
+                .dateEcheance(LocalDateTime.of(2026, 5, 3, 10, 0))
                 .sprint(Sprint.builder().nom("Sprint 6").build())
                 .build();
 
@@ -58,7 +59,7 @@ class EmailTemplateServiceTest {
         User recipient = User.builder().prenom("Alice").nom("Dev").email("alice@agileflow.dev").build();
         Task task = Task.builder()
                 .titre("Corriger le Kanban urgent")
-                .dateEcheance(LocalDate.of(2026, 5, 4))
+                .dateEcheance(LocalDateTime.of(2026, 5, 4, 10, 0))
                 .sprint(Sprint.builder().project(Project.builder().nom("AgileFlow Platform").build()).build())
                 .build();
 

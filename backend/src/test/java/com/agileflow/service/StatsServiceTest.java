@@ -22,6 +22,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -139,7 +140,7 @@ class StatsServiceTest {
                         .sprint(sprint)
                         .story(story)
                         .assignedTo(developer)
-                        .dateEcheance(LocalDate.now())
+                        .dateEcheance(LocalDateTime.now())
                         .build(),
                 Task.builder()
                         .titre("Todo")
@@ -147,7 +148,7 @@ class StatsServiceTest {
                         .sprint(sprint)
                         .story(story)
                         .assignedTo(developer)
-                        .dateEcheance(LocalDate.now().plusDays(1))
+                        .dateEcheance(LocalDateTime.now().plusDays(1))
                         .build(),
                 Task.builder()
                         .titre("In progress")
@@ -155,7 +156,7 @@ class StatsServiceTest {
                         .sprint(sprint)
                         .story(story)
                         .assignedTo(manager)
-                        .dateEcheance(LocalDate.now().plusDays(2))
+                        .dateEcheance(LocalDateTime.now().plusDays(2))
                         .build(),
                 Task.builder()
                         .titre("Review")
@@ -163,7 +164,7 @@ class StatsServiceTest {
                         .sprint(sprint)
                         .story(story)
                         .assignedTo(manager)
-                        .dateEcheance(LocalDate.now().plusDays(3))
+                        .dateEcheance(LocalDateTime.now().plusDays(3))
                         .build()
         ));
 

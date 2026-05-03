@@ -50,6 +50,8 @@ import KanbanColumn from '../../components/kanban/KanbanColumn';
 import TaskCard from '../../components/kanban/TaskCard';
 import CreateTaskModal from '../../components/kanban/CreateTaskModal';
 import TaskDetailModal from '../../components/kanban/TaskDetailModal';
+import WebSocketStatus from '../../components/WebSocketStatus';
+import { useWebSocket } from '../../hooks/useWebSocket';
 
 const COLUMNS: { id: TaskStatut; title: string }[] = [
   { id: 'TODO', title: 'À faire' },
@@ -98,6 +100,8 @@ const KanbanBoard = () => {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const { subscribe, publish, connectionState } = useWebSocket();
   const [snack, setSnack] = useState<{ msg: string; sev: 'success' | 'error' } | null>(null);
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -171,10 +175,52 @@ const KanbanBoard = () => {
     loadTasks();
   }, [loadTasks]);
 
+  // WebSocket subscription for real-time updates
+  useEffect(() => {
+    if (!selectedProjectId || connectionState !== 'CONNECTED') return;
+    
+    const topic = `/topic/kanban/${selectedProjectId}`;
+    console.log(`Subscribing to topic: ${topic}`);
+    
+    const subscription = subscribe(topic, (message) => {
+      try {
+        const event = JSON.parse(message.body);
+        console.log('Received WebSocket event:', event);
+        
+        if (event.eventType === 'MOVE' || event.eventType === 'ASSIGN') {
+          setTasks((currentTasks) => 
+            currentTasks.map((task) => 
+              task.id === event.taskId ? event.updatedTask : task
+            )
+          );
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+      }
+    });
+    
+    return () => {
+      if (subscription) {
+        console.log(`Unsubscribing from topic: ${topic}`);
+        subscription.unsubscribe();
+      }
+    };
+  }, [subscribe, selectedProjectId, connectionState]);
+
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const task = tasks.find((t) => `task-${t.id}` === active.id);
-    if (task) setActiveDragTask(task);
+    
+    // Security check: Only Admin, Manager, or the assigned user can move the task
+     const isOwner = task?.assignedToId === user?.id;
+     const hasPrivileges = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_MANAGER';
+    
+    if (task && (isOwner || hasPrivileges)) {
+      setActiveDragTask(task);
+    } else {
+      // If not allowed, we don't set the active drag task, which effectively cancels the visual drag
+      setSnack({ msg: "Vous n'avez pas l'autorisation de déplacer cette tâche.", sev: 'error' });
+    }
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -190,13 +236,23 @@ const KanbanBoard = () => {
     const newStatut = over.id as TaskStatut;
 
     if (!task || task.statut === newStatut) return;
+    if (!activeDragTask) return; // Guard against unauthorized drags
 
     // Optimistic update
+    const updatedTaskLocal = { ...task, statut: newStatut, isUrgent: newStatut === 'DONE' ? false : task.isUrgent };
     setTasks((current) => current.map((t) => (
-      t.id === taskId
-        ? { ...t, statut: newStatut, isUrgent: newStatut === 'DONE' ? false : t.isUrgent }
-        : t
+      t.id === taskId ? updatedTaskLocal : t
     )));
+
+    // Publish WebSocket message immediately for real-time responsiveness
+    if (selectedProjectId && connectionState === 'CONNECTED') {
+      publish('/kanban/move', {
+        eventType: 'MOVE',
+        taskId,
+        updatedTask: updatedTaskLocal,
+        projectId: selectedProjectId
+      });
+    }
 
     try {
       await moveTask(taskId, newStatut);
@@ -224,9 +280,20 @@ const KanbanBoard = () => {
   const handleUpdateTask = async (taskId: number, payload: UpdateTaskPayload) => {
     setSaving(true);
     try {
-      await updateTask(taskId, payload);
+      const updatedTask = await updateTask(taskId, payload);
       setSnack({ msg: 'Tâche mise à jour.', sev: 'success' });
       setDetailModalOpen(false);
+      
+      // If assignment changed, publish to WebSocket
+      if (selectedProjectId && payload.assignedToId !== undefined) {
+        publish('/kanban/assign', {
+          eventType: 'ASSIGN',
+          taskId,
+          updatedTask,
+          projectId: selectedProjectId
+        });
+      }
+      
       loadTasks();
     } catch {
       setSnack({ msg: 'Mise à jour impossible.', sev: 'error' });
@@ -267,7 +334,8 @@ const KanbanBoard = () => {
             Gérez vos tâches par glisser-déposer.
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <WebSocketStatus connectionState={connectionState} />
           <FormControl size="small" sx={{ minWidth: 200 }}>
             <InputLabel id="kanban-project-label">Projet</InputLabel>
             <Select

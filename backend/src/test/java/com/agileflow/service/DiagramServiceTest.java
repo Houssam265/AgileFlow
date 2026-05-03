@@ -107,8 +107,9 @@ class DiagramServiceTest {
                 "Workflow release",
                 Diagram.Type.FLOWCHART,
                 project.getId(),
+                null, // taskId
                 List.of("Backlog", "Developpement", "Review"),
-                null,
+                null, // json
                 true
         ));
 
