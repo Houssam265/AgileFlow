@@ -7,7 +7,7 @@ export type WebSocketState = 'CONNECTING' | 'CONNECTED' | 'DISCONNECTED';
 
 export interface UseWebSocketReturn {
   subscribe: (topic: string, callback: (message: IMessage) => void) => StompSubscription | null;
-  publish: (destination: string, body: unknown) => void;
+  publish: (destination: string, body: unknown, retry?: boolean) => void;
   disconnect: () => void;
   connectionState: WebSocketState;
 }
@@ -34,12 +34,10 @@ export const useWebSocket = (): UseWebSocketReturn => {
       onConnect: () => {
         isConnecting.current = false;
         setConnectionState('CONNECTED');
-        console.log('WebSocket connected successfully');
       },
       onDisconnect: () => {
         isConnecting.current = false;
         setConnectionState('DISCONNECTED');
-        console.log('WebSocket disconnected');
       },
       onStompError: (frame) => {
         isConnecting.current = false;
@@ -54,7 +52,6 @@ export const useWebSocket = (): UseWebSocketReturn => {
       onWebSocketClose: () => {
         isConnecting.current = false;
         setConnectionState('DISCONNECTED');
-        console.log('WebSocket connection closed');
       },
     });
 
@@ -87,21 +84,20 @@ export const useWebSocket = (): UseWebSocketReturn => {
     return subscription;
   }, []);
 
-  const publish = useCallback((destination: string, body: unknown) => {
-    if (!clientRef.current?.connected) {
-      console.warn('Cannot publish - WebSocket not connected');
-      return;
+  const publish = useCallback((destination: string, body: unknown, retry: boolean = true) => {
+    if (clientRef.current?.connected) {
+      clientRef.current.publish({
+        destination: `/app${destination}`,
+        body: JSON.stringify(body),
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    } else if (retry) {
+      setTimeout(() => publish(destination, body, false), 500);
+    } else {
+      console.error(`Cannot publish to /app${destination} - WebSocket not connected after retry`);
     }
-
-    console.log(`Publishing to /app${destination}:`, body);
-
-    clientRef.current.publish({
-      destination: `/app${destination}`,
-      body: JSON.stringify(body),
-      headers: {
-        'content-type': 'application/json',
-      },
-    });
   }, []);
 
   useEffect(() => {

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AppBar,
   Avatar,
+  Badge,
   Box,
   Chip,
   Divider,
@@ -15,6 +16,8 @@ import {
   Toolbar,
   Tooltip,
   Typography,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Assignment,
@@ -31,11 +34,17 @@ import {
   QueryStats,
   ViewKanban,
   ViewColumn,
+  ChatBubbleOutline,
 } from '@mui/icons-material';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import ChatPanel from '../chat/ChatPanel';
+import WebSocketStatus from '../WebSocketStatus';
+import { useWebSocket } from '../../hooks/useWebSocket';
+import { useChat } from '../../hooks/useChat';
 
 const DRAWER_WIDTH = 250;
+const CHAT_WIDTH = 360;
 
 const NAV_ITEMS = [
   { label: 'Tableau de bord', path: '/dashboard', icon: <Dashboard /> },
@@ -59,9 +68,31 @@ const ROLE_LABELS: Record<string, { label: string; color: 'default' | 'primary' 
 
 const AppLayout = () => {
   const [open, setOpen] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { connectionState, publish } = useWebSocket();
+  const { totalUnreadCount } = useChat({ isMonitor: true });
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+
+  useEffect(() => {
+    if (user && connectionState === 'CONNECTED') {
+      publish('/chat/presence', { userId: user.id, isOnline: true });
+      
+      const handleBeforeUnload = () => {
+        publish('/chat/presence', { userId: user.id, isOnline: false });
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        publish('/chat/presence', { userId: user.id, isOnline: false });
+      };
+    }
+  }, [user, connectionState, publish]);
 
   const handleLogout = () => {
     logout();
@@ -81,6 +112,14 @@ const AppLayout = () => {
             <Typography variant="h6" fontWeight={800} color="primary.main">AgileFlow</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <WebSocketStatus connectionState={connectionState} />
+            <Tooltip title="Ouvrir le chat">
+              <IconButton onClick={() => setIsChatOpen(!isChatOpen)} color="inherit" size="small" sx={{ color: 'text.secondary' }}>
+                <Badge badgeContent={totalUnreadCount} color="error">
+                  <ChatBubbleOutline fontSize="small" />
+                </Badge>
+              </IconButton>
+            </Tooltip>
             <Chip label={roleInfo.label} color={roleInfo.color} size="small" />
             <Typography variant="body2" color="text.secondary">{user?.email}</Typography>
             <Tooltip title="Se deconnecter">
@@ -152,12 +191,22 @@ const AppLayout = () => {
         </List>
       </Drawer>
 
-      <Box component="main" sx={{ flexGrow: 1, bgcolor: '#f8fafc', overflow: 'auto', minWidth: 0 }}>
+      <Box 
+        component="main" 
+        sx={{ 
+          flexGrow: 1, 
+          bgcolor: '#f8fafc', 
+          overflow: 'auto', 
+          minWidth: 0,
+        }}
+      >
         <Toolbar />
         <Box sx={{ p: { xs: 2, md: 3 } }}>
           <Outlet />
         </Box>
       </Box>
+
+      <ChatPanel open={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </Box>
   );
 };

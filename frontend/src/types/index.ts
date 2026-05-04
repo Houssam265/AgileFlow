@@ -301,6 +301,20 @@ export interface StatsData {
   velocity: VelocityPoint[];
 }
 
+export type ChannelType = 'GLOBAL' | 'PROJECT' | 'PRIVATE';
+
+export interface ChatMessageDTO {
+  id: number;
+  senderId: number;
+  senderName: string;
+  senderAvatar: string | null;
+  channelType: ChannelType;
+  projectId: number | null;
+  recipientId: number | null;
+  content: string;
+  createdAt: string;
+}
+
 export interface DiagramData {
   id: number;
   titre: string;
