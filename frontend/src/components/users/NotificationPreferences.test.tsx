@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import NotificationPreferences from './NotificationPreferences';
 
 const fetchMyEmailPreferences = vi.fn();
@@ -9,6 +10,13 @@ vi.mock('../../api/emailPreferencesApi', () => ({
   fetchMyEmailPreferences: (...args: unknown[]) => fetchMyEmailPreferences(...args),
   fetchEmailPreview: (...args: unknown[]) => fetchEmailPreview(...args),
   updateMyEmailPreferences: (...args: unknown[]) => updateMyEmailPreferences(...args),
+}));
+
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 1, email: 'test@agileflow.dev', role: 'ROLE_DEVELOPER' },
+    logout: vi.fn(),
+  }),
 }));
 
 describe('NotificationPreferences', () => {
@@ -33,7 +41,11 @@ describe('NotificationPreferences', () => {
       mentionEnabled: true,
     });
 
-    render(<NotificationPreferences />);
+    render(
+      <MemoryRouter>
+        <NotificationPreferences />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('notification-preferences')).toBeInTheDocument();

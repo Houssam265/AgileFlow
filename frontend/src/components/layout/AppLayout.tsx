@@ -33,6 +33,7 @@ import {
   ViewKanban,
   ViewColumn,
   ChatBubbleOutline,
+  AdminPanelSettings,
 } from '@mui/icons-material';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -160,7 +161,10 @@ const AppLayout = () => {
         <Divider sx={{ borderColor: 'grey.700', mb: 1 }} />
 
         <List dense>
-          {NAV_ITEMS.map(({ label, path, icon }) => {
+          {(user?.role === 'ROLE_ADMIN'
+            ? [...NAV_ITEMS, { label: 'Administration', path: '/admin', icon: <AdminPanelSettings /> }]
+            : NAV_ITEMS
+          ).map(({ label, path, icon }) => {
             const active = path === '/dashboard'
               ? location.pathname === path
               : location.pathname === path || location.pathname.startsWith(`${path}/`);

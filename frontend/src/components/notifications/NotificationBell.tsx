@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import type { MouseEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   IconButton,
   Badge,
@@ -10,7 +11,7 @@ import {
   Typography,
   Button,
   alpha,
-  useTheme
+  useTheme,
 } from '@mui/material';
 import {
   NotificationsOutlined,
@@ -23,6 +24,7 @@ import { useNotifications } from '../../hooks/useNotifications';
 
 export const NotificationBell = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const anchorEl = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const {
@@ -64,6 +66,7 @@ export const NotificationBell = () => {
         onClick={handleOpen}
         size="small"
         sx={{ ml: 1 }}
+        aria-label="Ouvrir les notifications"
       >
         <Badge badgeContent={unreadCount} color="error" showZero={false}>
           <NotificationsOutlined />
@@ -97,14 +100,26 @@ export const NotificationBell = () => {
           <Typography variant="subtitle1" fontWeight={600}>
             Notifications
           </Typography>
-          <Button
-            size="small"
-            onClick={handleMarkAllAsRead}
-            disabled={unreadCount === 0}
-            sx={{ textTransform: 'none', fontSize: '0.875rem' }}
-          >
-            Tout marquer comme lu
-          </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Button
+              size="small"
+              onClick={() => {
+                handleClose();
+                navigate('/notifications');
+              }}
+              sx={{ textTransform: 'none', fontSize: '0.875rem' }}
+            >
+              Voir tout
+            </Button>
+            <Button
+              size="small"
+              onClick={handleMarkAllAsRead}
+              disabled={unreadCount === 0}
+              sx={{ textTransform: 'none', fontSize: '0.875rem' }}
+            >
+              Tout lu
+            </Button>
+          </Box>
         </Box>
 
         {/* Body - Notifications List */}

@@ -326,6 +326,128 @@
         ],
         "url": "{{baseUrl}}/diagrams/{{diagramId}}"
       }
+    },
+    {
+      "name": "Email preferences",
+      "item": [
+        {
+          "name": "Get my email preferences",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/email-preferences/me"
+          }
+        },
+        {
+          "name": "Update my email preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sprintStartEnabled\": true,\n  \"taskAssignedEnabled\": true,\n  \"deadlineEnabled\": false,\n  \"mentionEnabled\": true\n}"
+            },
+            "url": "{{baseUrl}}/email-preferences/me"
+          }
+        },
+        {
+          "name": "Preview email template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/email-preferences/me/preview?type=SPRINT_START"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications?page=0"
+          }
+        },
+        {
+          "name": "Mark notification read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/{{notificationId}}/read"
+          }
+        },
+        {
+          "name": "Mark all notifications read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/read-all"
+          }
+        },
+        {
+          "name": "Delete notification",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/notifications/{{notificationId}}"
+          }
+        },
+        {
+          "name": "Admin dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/admin/dashboard"
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -351,6 +473,10 @@
     },
     {
       "key": "diagramId",
+      "value": "1"
+    },
+    {
+      "key": "notificationId",
       "value": "1"
     }
   ]

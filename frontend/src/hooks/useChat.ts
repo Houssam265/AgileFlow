@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { create } from 'zustand';
 import { IMessage, StompSubscription } from '@stomp/stompjs';
 import { useWebSocket } from './useWebSocket';

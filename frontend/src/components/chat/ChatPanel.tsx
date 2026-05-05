@@ -19,7 +19,6 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 import { useAuthStore } from '../../store/authStore';
 import MessageBubble from './MessageBubble';
 import ConversationList, { Conversation } from './ConversationList';
-import WebSocketStatus from '../WebSocketStatus';
 import { ChannelType, ProjectListItem, UserListItem } from '../../types';
 import { fetchProjects } from '../../api/projectsApi';
 import { fetchUsers } from '../../api/usersApi';
@@ -101,7 +100,7 @@ const ChatPanel = ({ open, onClose }: ChatPanelProps) => {
     { id: 'global', name: 'Global', type: 'GLOBAL' as ChannelType, unreadCount: unreadCounts['global'] || 0 },
     ...projects.map(p => ({ 
       id: `project-${p.id}`, 
-      name: p.nom, 
+      name: p.name, 
       type: 'PROJECT' as ChannelType, 
       unreadCount: unreadCounts[`project-${p.id}`] || 0, 
       projectId: p.id 

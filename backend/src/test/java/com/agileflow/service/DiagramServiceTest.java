@@ -4,12 +4,10 @@ import com.agileflow.dto.CreateDiagramRequest;
 import com.agileflow.dto.DiagramDTO;
 import com.agileflow.dto.UpdateDiagramRequest;
 import com.agileflow.entity.Diagram;
-import com.agileflow.entity.Notification;
 import com.agileflow.entity.Project;
 import com.agileflow.entity.User;
 import com.agileflow.exception.ForbiddenOperationException;
 import com.agileflow.repository.DiagramRepository;
-import com.agileflow.repository.NotificationRepository;
 import com.agileflow.repository.ProjectRepository;
 import com.agileflow.repository.TaskRepository;
 import com.agileflow.repository.UserRepository;
@@ -30,6 +28,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,7 +51,10 @@ class DiagramServiceTest {
     private TaskRepository taskRepository;
 
     @Mock
-    private NotificationRepository notificationRepository;
+    private NotificationService notificationService;
+
+    @Mock
+    private DiagramNotificationService diagramNotificationService;
 
     @InjectMocks
     private DiagramService diagramService;
@@ -120,15 +124,9 @@ class DiagramServiceTest {
         assertThat(dto.id()).isEqualTo(99L);
         assertThat(dto.etapes()).containsExactly("Backlog", "Developpement", "Review");
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<Iterable<Notification>> notificationCaptor = ArgumentCaptor.forClass(Iterable.class);
-        verify(notificationRepository).saveAll(notificationCaptor.capture());
-        assertThat(notificationCaptor.getValue())
-                .hasSize(1)
-                .allSatisfy(notification -> {
-                    assertThat(notification.getUser()).isEqualTo(developer);
-                    assertThat(notification.getMessage()).contains("Diagramme partage");
-                });
+        verify(diagramNotificationService).notifyDiagramCreated(eq(project.getId()), any(DiagramDTO.class), anyString());
+        verify(diagramNotificationService).notifyDiagramShared(eq(project.getId()), any(DiagramDTO.class), anyString());
+        verify(notificationService).createAndBroadcast(eq(developer), argThat(msg -> msg != null && msg.contains("Diagramme partage")));
     }
 
     @Test
@@ -159,7 +157,7 @@ class DiagramServiceTest {
                 .hasMessageContaining("modifier");
 
         verify(diagramRepository, never()).save(any(Diagram.class));
-        verify(notificationRepository, never()).saveAll(any());
+        verify(notificationService, never()).createAndBroadcast(any(), anyString());
     }
 
     private void authenticateAs(User user) {

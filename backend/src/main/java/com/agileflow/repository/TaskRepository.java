@@ -119,7 +119,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     );
 
     @Query("""
-            SELECT FUNCTION('DATE', t.dateEcheance), COUNT(t.id)
+            SELECT CAST(t.dateEcheance AS java.time.LocalDate), COUNT(t.id)
             FROM Task t
             LEFT JOIN t.sprint s
             LEFT JOIN s.project p
@@ -131,8 +131,8 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
               AND (:sprintId IS NULL OR s.id = :sprintId)
               AND (:managerId IS NULL OR p.manager.id = :managerId)
               AND (:actorId IS NULL OR t.assignedTo.id = :actorId)
-            GROUP BY FUNCTION('DATE', t.dateEcheance)
-            ORDER BY FUNCTION('DATE', t.dateEcheance) ASC
+            GROUP BY CAST(t.dateEcheance AS java.time.LocalDate)
+            ORDER BY CAST(t.dateEcheance AS java.time.LocalDate) ASC
             """)
     List<Object[]> aggregateCompletedTasksByDueDate(
             @Param("startDateAtStart") LocalDateTime startDateAtStart,
