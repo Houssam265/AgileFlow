@@ -16,8 +16,6 @@ import {
   Toolbar,
   Tooltip,
   Typography,
-  useTheme,
-  useMediaQuery,
 } from '@mui/material';
 import {
   Assignment,
@@ -40,11 +38,11 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import ChatPanel from '../chat/ChatPanel';
 import WebSocketStatus from '../WebSocketStatus';
+import NotificationBell from '../notifications/NotificationBell';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useChat } from '../../hooks/useChat';
 
 const DRAWER_WIDTH = 250;
-const CHAT_WIDTH = 360;
 
 const NAV_ITEMS = [
   { label: 'Tableau de bord', path: '/dashboard', icon: <Dashboard /> },
@@ -74,8 +72,6 @@ const AppLayout = () => {
   const { totalUnreadCount } = useChat({ isMonitor: true });
   const navigate = useNavigate();
   const location = useLocation();
-  const theme = useTheme();
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
 
   useEffect(() => {
     if (user && connectionState === 'CONNECTED') {
@@ -113,6 +109,7 @@ const AppLayout = () => {
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <WebSocketStatus connectionState={connectionState} />
+            <NotificationBell />
             <Tooltip title="Ouvrir le chat">
               <IconButton onClick={() => setIsChatOpen(!isChatOpen)} color="inherit" size="small" sx={{ color: 'text.secondary' }}>
                 <Badge badgeContent={totalUnreadCount} color="error">

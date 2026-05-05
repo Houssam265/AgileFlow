@@ -1,10 +1,9 @@
 package com.agileflow.service;
 
 import com.agileflow.entity.Comment;
-import com.agileflow.entity.Notification;
 import com.agileflow.entity.Task;
 import com.agileflow.entity.User;
-import com.agileflow.repository.NotificationRepository;
+import com.agileflow.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -18,7 +17,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class MentionNotificationService {
 
-    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
     private final SimpMessagingTemplate messagingTemplate;
     private final EmailNotificationService emailNotificationService;
 
@@ -34,14 +33,7 @@ public class MentionNotificationService {
         LocalDateTime now = LocalDateTime.now();
 
         Set<User> uniqueRecipients = new LinkedHashSet<>(recipients);
-        notificationRepository.saveAll(uniqueRecipients.stream()
-                .map(user -> Notification.builder()
-                        .user(user)
-                        .message(message)
-                        .lu(false)
-                        .dateCreation(now)
-                        .build())
-                .toList());
+        uniqueRecipients.forEach(user -> notificationService.createAndBroadcast(user, message));
 
         uniqueRecipients.forEach(user -> {
             messagingTemplate.convertAndSendToUser(

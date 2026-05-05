@@ -4,17 +4,16 @@ import com.agileflow.dto.CreateDiagramRequest;
 import com.agileflow.dto.DiagramDTO;
 import com.agileflow.dto.UpdateDiagramRequest;
 import com.agileflow.entity.Diagram;
-import com.agileflow.entity.Notification;
 import com.agileflow.entity.Project;
 import com.agileflow.entity.Task;
 import com.agileflow.entity.User;
 import com.agileflow.exception.ForbiddenOperationException;
 import com.agileflow.exception.ResourceNotFoundException;
 import com.agileflow.repository.DiagramRepository;
-import com.agileflow.repository.NotificationRepository;
 import com.agileflow.repository.ProjectRepository;
 import com.agileflow.repository.TaskRepository;
 import com.agileflow.repository.UserRepository;
+import com.agileflow.service.NotificationService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,7 +36,7 @@ public class DiagramService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final TaskRepository taskRepository;
-    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
     private final DiagramNotificationService diagramNotificationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -258,16 +257,6 @@ public class DiagramService {
         recipients.remove(actor.getId());
 
         String message = "Diagramme partage: " + diagram.getTitre();
-        List<Notification> notifications = recipients.values().stream()
-                .map(user -> Notification.builder()
-                        .user(user)
-                        .message(message)
-                        .lu(false)
-                        .dateCreation(LocalDateTime.now())
-                        .build())
-                .toList();
-        if (!notifications.isEmpty()) {
-            notificationRepository.saveAll(notifications);
-        }
+        recipients.values().forEach(user -> notificationService.createAndBroadcast(user, message));
     }
 }
