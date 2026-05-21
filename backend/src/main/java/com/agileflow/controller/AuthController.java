@@ -18,13 +18,25 @@ public class AuthController {
 
     @GetMapping("/check-email")
     public ResponseEntity<Map<String, Boolean>> checkEmail(@RequestParam String email) {
-        boolean available = !userRepository.existsByEmail(email);
+        boolean available = userRepository.findByEmail(email.trim().toLowerCase())
+                .map(user -> !user.isEmailVerified())
+                .orElse(true);
         return ResponseEntity.ok(Map.of("available", available));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthService.AuthResponse> register(@RequestBody AuthService.RegisterRequest request) {
+    public ResponseEntity<AuthService.RegisterResponse> register(@RequestBody AuthService.RegisterRequest request) {
         return ResponseEntity.ok(authService.register(request));
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<AuthService.AuthResponse> verifyEmail(@RequestBody AuthService.EmailVerificationRequest request) {
+        return ResponseEntity.ok(authService.verifyEmail(request));
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<AuthService.RegisterResponse> resendVerification(@RequestBody AuthService.ResendVerificationRequest request) {
+        return ResponseEntity.ok(authService.resendVerificationCode(request));
     }
 
     @PostMapping("/login")

@@ -24,6 +24,10 @@ public class User {
     @Builder.Default
     private boolean actif = true;
     @Builder.Default
+    private boolean emailVerified = true;
+    private String emailVerificationOtpHash;
+    private LocalDateTime emailVerificationOtpExpiresAt;
+    @Builder.Default
     private LocalDateTime dateCreation = LocalDateTime.now();
 
     /** Dernière connexion réussie (login). */

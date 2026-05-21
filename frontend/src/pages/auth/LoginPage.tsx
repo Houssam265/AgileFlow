@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Box, TextField, Button, Typography, Paper, Alert, CircularProgress, InputAdornment, IconButton,
+  Box, TextField, Button, Typography, Paper, Alert, CircularProgress, InputAdornment, IconButton, Divider, Stack,
 } from '@mui/material';
-import { Visibility, VisibilityOff, LockOutlined } from '@mui/icons-material';
+import { GitHub, Google, Visibility, VisibilityOff, LockOutlined } from '@mui/icons-material';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api/axiosInterceptor';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const OAUTH_BASE_URL = API_URL.replace(/\/api\/?$/, '');
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -16,6 +19,19 @@ const LoginPage = () => {
 
   const navigate = useNavigate();
   const { setAuth } = useAuth();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get('oauthError');
+    if (oauthError) {
+      const oauthDetail = params.get('oauthDetail');
+      setError(oauthDetail || `Connexion OAuth impossible: ${oauthError}`);
+    }
+  }, []);
+
+  const handleOAuthLogin = (provider: 'google' | 'github') => {
+    window.location.href = `${OAUTH_BASE_URL}/oauth2/authorization/${provider}`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +92,29 @@ const LoginPage = () => {
             {loading ? <CircularProgress size={24} color="inherit" /> : 'Se connecter'}
           </Button>
         </Box>
+
+        <Divider sx={{ my: 3 }}>ou</Divider>
+
+        <Stack spacing={1.5}>
+          <Button
+            type="button"
+            variant="outlined"
+            fullWidth
+            startIcon={<Google />}
+            onClick={() => handleOAuthLogin('google')}
+          >
+            Continuer avec Google
+          </Button>
+          <Button
+            type="button"
+            variant="outlined"
+            fullWidth
+            startIcon={<GitHub />}
+            onClick={() => handleOAuthLogin('github')}
+          >
+            Continuer avec GitHub
+          </Button>
+        </Stack>
 
         <Typography variant="body2" align="center" sx={{ mt: 3 }}>
           Pas encore de compte ?{' '}

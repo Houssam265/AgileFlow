@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import { useAuth } from '../context/AuthContext';
 import LoginPage from '../pages/auth/LoginPage';
+import OAuthRedirectPage from '../pages/auth/OAuthRedirectPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 import DashboardPage from '../pages/DashboardPage';
 import ProjectsListPage from '../pages/projects/ProjectsListPage';
@@ -43,6 +44,7 @@ const AppRouter = () => (
   <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/oauth2/redirect" element={<OAuthRedirectPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
