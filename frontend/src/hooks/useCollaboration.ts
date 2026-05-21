@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Edge, Node } from 'reactflow';
 import type { IMessage } from '@stomp/stompjs';
 import { useWebSocket } from './useWebSocket';
@@ -12,14 +12,38 @@ interface UseCollaborationArgs {
   onRemoteContent?: (nodes: Node[], edges: Edge[]) => void;
 }
 
+const clearRemoteSelection = (nodes: Node[], edges: Edge[]) => ({
+  nodes: nodes.map((node) => ({ ...node, selected: false })),
+  edges: edges.map((edge) => ({ ...edge, selected: false })),
+});
+
 export const useCollaboration = ({ diagramId, currentUser, onRemoteContent }: UseCollaborationArgs) => {
   const [activeUsers, setActiveUsers] = useState<CollaboratorInfo[]>([]);
   const [lockedElements, setLockedElements] = useState<Map<string, { userId: number; color: string }>>(new Map());
   const { subscribe, publish, connectionState } = useWebSocket();
-  const userColor = useMemo(() => COLORS[(currentUser?.id ?? 0) % COLORS.length], [currentUser?.id]);
+  const currentUserId = currentUser?.id;
+  const currentUserName = useMemo(() => (
+    currentUser ? `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email : ''
+  ), [currentUser?.email, currentUser?.firstName, currentUser?.lastName]);
+  const userColor = useMemo(() => COLORS[(currentUserId ?? 0) % COLORS.length], [currentUserId]);
+  const onRemoteContentRef = useRef(onRemoteContent);
+  const leaveTimersRef = useRef<Map<number, number>>(new Map());
+
+  useEffect(() => {
+    onRemoteContentRef.current = onRemoteContent;
+  }, [onRemoteContent]);
+
+  const cancelLeaveTimer = useCallback((userId: number) => {
+    const timer = leaveTimersRef.current.get(userId);
+    if (timer) {
+      window.clearTimeout(timer);
+      leaveTimersRef.current.delete(userId);
+    }
+  }, []);
 
   const mergeUser = useCallback((message: DiagramUpdateMessage | { userId: number; userName?: string; userColor?: string }) => {
-    if (!message.userId || message.userId === currentUser?.id) return;
+    if (!message.userId || message.userId === currentUserId) return;
+    cancelLeaveTimer(message.userId);
     setActiveUsers((prev) => {
       const next = prev.filter((user) => user.userId !== message.userId);
       next.push({
@@ -33,10 +57,20 @@ export const useCollaboration = ({ diagramId, currentUser, onRemoteContent }: Us
       });
       return next;
     });
-  }, [currentUser?.id]);
+  }, [cancelLeaveTimer, currentUserId]);
+
+  const scheduleUserLeave = useCallback((userId: number) => {
+    if (!userId || userId === currentUserId) return;
+    cancelLeaveTimer(userId);
+    const timer = window.setTimeout(() => {
+      setActiveUsers((prev) => prev.filter((user) => user.userId !== userId));
+      leaveTimersRef.current.delete(userId);
+    }, 1500);
+    leaveTimersRef.current.set(userId, timer);
+  }, [cancelLeaveTimer, currentUserId]);
 
   const handleMessage = useCallback((message: DiagramUpdateMessage) => {
-    if (message.userId === currentUser?.id) return;
+    if (message.userId === currentUserId) return;
     if (message.type === 'CURSOR_MOVE') {
       const cursor = message.payload as { x?: number; y?: number };
       mergeUser(message);
@@ -59,19 +93,20 @@ export const useCollaboration = ({ diagramId, currentUser, onRemoteContent }: Us
       });
       return;
     }
-    if ((message.type === 'CONTENT_UPDATE' || message.type === 'FULL_SYNC') && onRemoteContent) {
+    if ((message.type === 'CONTENT_UPDATE' || message.type === 'FULL_SYNC') && onRemoteContentRef.current) {
       const payload = message.payload as { nodes?: Node[]; edges?: Edge[] };
-      onRemoteContent(payload.nodes ?? [], payload.edges ?? []);
+      mergeUser(message);
+      onRemoteContentRef.current(payload.nodes ?? [], payload.edges ?? []);
     }
-  }, [currentUser?.id, mergeUser, onRemoteContent]);
+  }, [currentUserId, mergeUser]);
 
   useEffect(() => {
-    if (!diagramId || !currentUser || connectionState !== 'CONNECTED') return;
+    if (!diagramId || !currentUserId || connectionState !== 'CONNECTED') return;
     const diagramSub = subscribe(`/topic/diagram/${diagramId}`, (raw: IMessage) => handleMessage(JSON.parse(raw.body)));
     const presenceSub = subscribe(`/topic/diagram/${diagramId}/presence`, (raw: IMessage) => {
       const message = JSON.parse(raw.body) as { type: string; userId: number; userName: string; userColor: string };
       if (message.type === 'LEAVE') {
-        setActiveUsers((prev) => prev.filter((user) => user.userId !== message.userId));
+        scheduleUserLeave(message.userId);
       } else {
         mergeUser(message);
       }
@@ -79,8 +114,8 @@ export const useCollaboration = ({ diagramId, currentUser, onRemoteContent }: Us
     publish(`/diagram/${diagramId}/join`, {
       type: 'JOIN',
       diagramId,
-      userId: currentUser.id,
-      userName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email,
+      userId: currentUserId,
+      userName: currentUserName,
       userColor,
       payload: null,
     });
@@ -88,63 +123,69 @@ export const useCollaboration = ({ diagramId, currentUser, onRemoteContent }: Us
       publish(`/diagram/${diagramId}/leave`, {
         type: 'LEAVE',
         diagramId,
-        userId: currentUser.id,
-        userName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email,
+        userId: currentUserId,
+        userName: currentUserName,
         userColor,
         payload: null,
       }, false);
       diagramSub?.unsubscribe();
       presenceSub?.unsubscribe();
     };
-  }, [connectionState, currentUser, diagramId, handleMessage, mergeUser, publish, subscribe, userColor]);
+  }, [connectionState, currentUserId, currentUserName, diagramId, handleMessage, mergeUser, publish, scheduleUserLeave, subscribe, userColor]);
+
+  useEffect(() => () => {
+    leaveTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    leaveTimersRef.current.clear();
+  }, []);
 
   const sendUpdate = useCallback((nodes: Node[], edges: Edge[]) => {
-    if (!diagramId || !currentUser) return;
+    if (!diagramId || !currentUserId) return;
+    const payload = clearRemoteSelection(nodes, edges);
     publish(`/diagram/${diagramId}`, {
       type: 'CONTENT_UPDATE',
       diagramId,
-      userId: currentUser.id,
-      userName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email,
+      userId: currentUserId,
+      userName: currentUserName,
       userColor,
-      payload: { nodes, edges },
+      payload,
     });
-  }, [currentUser, diagramId, publish, userColor]);
+  }, [currentUserId, currentUserName, diagramId, publish, userColor]);
 
   const sendCursor = useCallback((x: number, y: number) => {
-    if (!diagramId || !currentUser) return;
+    if (!diagramId || !currentUserId) return;
     publish(`/diagram/${diagramId}`, {
       type: 'CURSOR_MOVE',
       diagramId,
-      userId: currentUser.id,
-      userName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email,
+      userId: currentUserId,
+      userName: currentUserName,
       userColor,
       payload: { x, y },
     }, false);
-  }, [currentUser, diagramId, publish, userColor]);
+  }, [currentUserId, currentUserName, diagramId, publish, userColor]);
 
   const lockElement = useCallback((elementId: string) => {
-    if (!diagramId || !currentUser) return;
+    if (!diagramId || !currentUserId) return;
     publish(`/diagram/${diagramId}`, {
       type: 'ELEMENT_LOCK',
       diagramId,
-      userId: currentUser.id,
-      userName: currentUser.email,
+      userId: currentUserId,
+      userName: currentUserName,
       userColor,
       payload: elementId,
     });
-  }, [currentUser, diagramId, publish, userColor]);
+  }, [currentUserId, currentUserName, diagramId, publish, userColor]);
 
   const unlockElement = useCallback((elementId: string) => {
-    if (!diagramId || !currentUser) return;
+    if (!diagramId || !currentUserId) return;
     publish(`/diagram/${diagramId}`, {
       type: 'ELEMENT_UNLOCK',
       diagramId,
-      userId: currentUser.id,
-      userName: currentUser.email,
+      userId: currentUserId,
+      userName: currentUserName,
       userColor,
       payload: elementId,
     });
-  }, [currentUser, diagramId, publish, userColor]);
+  }, [currentUserId, currentUserName, diagramId, publish, userColor]);
 
   return { activeUsers, lockedElements, userColor, connectionState, sendUpdate, sendCursor, lockElement, unlockElement };
 };

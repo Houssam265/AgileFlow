@@ -24,29 +24,39 @@ const cleanEdgeData = (data: Record<string, unknown>) => {
   return serializable;
 };
 
+const hasArrow = (value?: string | null) => value != null && value !== '' && value !== 'none';
+
 export const toReactNodes = (diagram: DiagramData, onChange?: (id: string, patch: Record<string, unknown>) => void): Node[] => {
   if (diagram.nodes?.length) {
-    return diagram.nodes.map((node) => ({
-      id: node.id,
-      type: 'diagramNode',
-      position: { x: node.positionX ?? 0, y: node.positionY ?? 0 },
-      width: node.width ?? undefined,
-      height: node.height ?? undefined,
-      data: {
+    return diagram.nodes.map((node) => {
+      const data = {
         ...parseData(node.data),
         shape: node.type,
         locked: Boolean(node.locked),
         onChange,
-      },
-      selected: false,
-    }));
+      };
+
+      return {
+        id: node.id,
+        type: 'diagramNode',
+        position: { x: node.positionX ?? 0, y: node.positionY ?? 0 },
+        width: node.width ?? undefined,
+        height: node.height ?? undefined,
+        draggable: !Boolean(data.locked),
+        data,
+        selected: false,
+      };
+    });
   }
   const raw = diagram.canvasData ?? diagram.content ?? diagram.json;
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed.nodes)) {
-        return parsed.nodes.map((node: Node) => ({ ...node, data: { ...node.data, onChange } }));
+        return parsed.nodes.map((node: Node) => {
+          const data = { ...node.data, onChange };
+          return { ...node, draggable: !Boolean(data.locked), data };
+        });
       }
     } catch {
       return [];
@@ -57,23 +67,29 @@ export const toReactNodes = (diagram: DiagramData, onChange?: (id: string, patch
 
 export const toReactEdges = (diagram: DiagramData, onChange?: (id: string, patch: Record<string, unknown>) => void, onDelete?: (id: string) => void): Edge[] => {
   if (diagram.edges?.length) {
-    return diagram.edges.map((edge) => ({
-      id: edge.id,
-      source: edge.sourceNodeId,
-      target: edge.targetNodeId,
-      sourceHandle: edge.sourceHandle ?? undefined,
-      targetHandle: edge.targetHandle ?? undefined,
-      type: 'diagramEdge',
-      markerEnd: edge.arrowEnd === 'none' ? undefined : { type: MarkerType.ArrowClosed },
-      data: {
-        ...parseData(edge.data),
-        edgeType: edge.edgeType ?? 'association',
-        arrowStart: edge.arrowStart,
-        arrowEnd: edge.arrowEnd,
-        onChange,
-        onDelete,
-      },
-    }));
+    return diagram.edges.map((edge) => {
+      const arrowStart = edge.arrowStart ?? 'none';
+      const arrowEnd = edge.arrowEnd ?? 'filled';
+
+      return {
+        id: edge.id,
+        source: edge.sourceNodeId,
+        target: edge.targetNodeId,
+        sourceHandle: edge.sourceHandle ?? undefined,
+        targetHandle: edge.targetHandle ?? undefined,
+        type: 'diagramEdge',
+        markerStart: hasArrow(arrowStart) ? { type: MarkerType.ArrowClosed } : undefined,
+        markerEnd: hasArrow(arrowEnd) ? { type: MarkerType.ArrowClosed } : undefined,
+        data: {
+          ...parseData(edge.data),
+          edgeType: edge.edgeType ?? 'association',
+          arrowStart,
+          arrowEnd,
+          onChange,
+          onDelete,
+        },
+      };
+    });
   }
   const raw = diagram.canvasData ?? diagram.content ?? diagram.json;
   if (raw) {

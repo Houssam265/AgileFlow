@@ -20,7 +20,6 @@ import ReactFlow, {
   Edge,
   EdgeChange,
   MarkerType,
-  MiniMap,
   Node,
   NodeChange,
   ReactFlowProvider,
@@ -51,10 +50,25 @@ import type { DiagramData, UpdateDiagramPayload } from '../../types';
 const makeId = () => (crypto.randomUUID ? crypto.randomUUID() : `node-${Date.now()}-${Math.round(Math.random() * 10000)}`);
 
 const attachNodeHandlers = (nodes: Node[], onChange: (id: string, patch: Record<string, unknown>) => void) =>
-  nodes.map((node) => ({ ...node, data: { ...node.data, onChange } }));
+  nodes.map((node) => ({ ...node, draggable: !Boolean(node.data?.locked), data: { ...node.data, onChange } }));
 
 const attachEdgeHandlers = (edges: Edge[], onChange: (id: string, patch: Record<string, unknown>) => void, onDelete: (id: string) => void) =>
   edges.map((edge) => ({ ...edge, type: 'diagramEdge', data: { ...edge.data, onChange, onDelete } }));
+
+const isLockedNodeChange = (change: NodeChange, current: Node[]) => {
+  if (!('id' in change)) return false;
+  const node = current.find((item) => item.id === change.id);
+  return Boolean(node?.data?.locked) && ['position', 'dimensions', 'remove'].includes(change.type);
+};
+
+const normalizeArrow = (value: unknown, fallback: 'none' | 'filled') => {
+  if (value === undefined || value === null || value === '') return fallback;
+  return String(value) === 'none' ? 'none' : 'filled';
+};
+
+const arrowMarker = (value: 'none' | 'filled') => (
+  value === 'none' ? undefined : { type: MarkerType.ArrowClosed }
+);
 
 const EditorInner = () => {
   const { id } = useParams();
@@ -74,47 +88,94 @@ const EditorInner = () => {
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [selectedShape, setSelectedShape] = useState<ShapeDefinition | null>(null);
   const [selectedTool, setSelectedTool] = useState('select');
+  const [showLibrary, setShowLibrary] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
-  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [snapToGrid] = useState(true);
   const [zoom, setZoom] = useState(100);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nodesRef = useRef<Node[]>([]);
+  const edgesRef = useRef<Edge[]>([]);
+  const scheduleSaveRef = useRef<(nextNodes: Node[], nextEdges: Edge[]) => void>(() => undefined);
+
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
 
   const handleNodePatch = useCallback((nodeId: string, patch: Record<string, unknown>) => {
-    setNodes((current) => current.map((node) => {
-      if (node.id !== nodeId) return node;
-      const nextPosition = patch.positionX !== undefined || patch.positionY !== undefined
-        ? { x: Number(patch.positionX ?? node.position.x), y: Number(patch.positionY ?? node.position.y) }
-        : node.position;
-      return {
-        ...node,
-        position: nextPosition,
-        width: patch.width !== undefined ? Number(patch.width) : node.width,
-        height: patch.height !== undefined ? Number(patch.height) : node.height,
-        data: { ...node.data, ...patch },
-      };
-    }));
+    setNodes((current) => {
+      const next = current.map((node) => {
+        if (node.id !== nodeId) return node;
+        const canUpdateGeometry = !node.data?.locked || patch.locked === false;
+        const nextPosition = canUpdateGeometry && (patch.positionX !== undefined || patch.positionY !== undefined)
+          ? { x: Number(patch.positionX ?? node.position.x), y: Number(patch.positionY ?? node.position.y) }
+          : node.position;
+        const nextData = { ...node.data, ...patch };
+        return {
+          ...node,
+          position: nextPosition,
+          width: canUpdateGeometry && patch.width !== undefined ? Number(patch.width) : node.width,
+          height: canUpdateGeometry && patch.height !== undefined ? Number(patch.height) : node.height,
+          draggable: !Boolean(nextData.locked),
+          data: nextData,
+        };
+      });
+      nodesRef.current = next;
+      scheduleSaveRef.current(next, edgesRef.current);
+      return next;
+    });
   }, []);
 
   const handleEdgePatch = useCallback((edgeId: string, patch: Record<string, unknown>) => {
-    setEdges((current) => current.map((edge) => (
-      edge.id === edgeId
-        ? { ...edge, animated: patch.animated !== undefined ? Boolean(patch.animated) : edge.animated, data: { ...edge.data, ...patch }, label: patch.label !== undefined ? String(patch.label) : edge.label }
-        : edge
-    )));
+    setEdges((current) => {
+      const next = current.map((edge) => {
+        if (edge.id !== edgeId) return edge;
+
+        const arrowStart = normalizeArrow(patch.arrowStart, normalizeArrow(edge.data?.arrowStart, edge.markerStart ? 'filled' : 'none'));
+        const arrowEnd = normalizeArrow(patch.arrowEnd, normalizeArrow(edge.data?.arrowEnd, edge.markerEnd ? 'filled' : 'none'));
+
+        return {
+          ...edge,
+          animated: patch.animated !== undefined ? Boolean(patch.animated) : edge.animated,
+          markerStart: arrowMarker(arrowStart),
+          markerEnd: arrowMarker(arrowEnd),
+          data: { ...edge.data, ...patch, arrowStart, arrowEnd },
+          label: patch.label !== undefined ? String(patch.label) : edge.label,
+        };
+      });
+      edgesRef.current = next;
+      scheduleSaveRef.current(nodesRef.current, next);
+      return next;
+    });
   }, []);
 
   const handleEdgeDelete = useCallback((edgeId: string) => {
-    setEdges((current) => current.filter((edge) => edge.id !== edgeId));
+    setEdges((current) => {
+      const next = current.filter((edge) => edge.id !== edgeId);
+      edgesRef.current = next;
+      scheduleSaveRef.current(nodesRef.current, next);
+      return next;
+    });
   }, []);
 
   const { activeUsers, connectionState, sendUpdate, sendCursor, lockElement, unlockElement } = useCollaboration({
     diagramId: Number.isFinite(diagramId) ? diagramId : null,
     currentUser: user,
     onRemoteContent: (remoteNodes, remoteEdges) => {
-      setNodes(attachNodeHandlers(remoteNodes, handleNodePatch));
-      setEdges(attachEdgeHandlers(remoteEdges, handleEdgePatch, handleEdgeDelete));
+      const selectedNodeIds = new Set(nodesRef.current.filter((node) => node.selected).map((node) => node.id));
+      const selectedEdgeIds = new Set(edgesRef.current.filter((edge) => edge.selected).map((edge) => edge.id));
+      const nextNodes = attachNodeHandlers(remoteNodes.map((node) => ({ ...node, selected: selectedNodeIds.has(node.id) })), handleNodePatch);
+      const nextEdges = attachEdgeHandlers(remoteEdges.map((edge) => ({ ...edge, selected: selectedEdgeIds.has(edge.id) })), handleEdgePatch, handleEdgeDelete);
+      nodesRef.current = nextNodes;
+      edgesRef.current = nextEdges;
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+      setSelectedNode(nextNodes.find((node) => selectedNodeIds.has(node.id)) ?? null);
+      setSelectedEdge(nextEdges.find((edge) => selectedEdgeIds.has(edge.id)) ?? null);
     },
   });
 
@@ -127,8 +188,12 @@ const EditorInner = () => {
     try {
       const row = await fetchDiagram(diagramId);
       setDiagram(row);
-      setNodes(toReactNodes(row, handleNodePatch));
-      setEdges(toReactEdges(row, handleEdgePatch, handleEdgeDelete));
+      const nextNodes = toReactNodes(row, handleNodePatch);
+      const nextEdges = toReactEdges(row, handleEdgePatch, handleEdgeDelete);
+      nodesRef.current = nextNodes;
+      edgesRef.current = nextEdges;
+      setNodes(nextNodes);
+      setEdges(nextEdges);
       setTimeout(() => reactFlow.fitView({ padding: 0.2 }), 100);
     } catch {
       setError('Impossible de charger le diagramme.');
@@ -143,28 +208,23 @@ const EditorInner = () => {
 
   const saveNow = useCallback(async (nextNodes = nodes, nextEdges = edges) => {
     if (!diagram) return;
-    setSaving(true);
-    try {
-      const canvasData = buildCanvasData(diagram.title ?? diagram.titre, diagram.type, nextNodes, nextEdges);
-      const payload: UpdateDiagramPayload = {
-        title: diagram.title ?? diagram.titre,
-        titre: diagram.title ?? diagram.titre,
-        description: diagram.description ?? '',
-        type: diagram.type,
-        taskId: diagram.taskId,
-        etapes: diagram.etapes ?? [],
-        shared: diagram.shared,
-        isShared: diagram.isShared ?? diagram.shared,
-        canvasData,
-        content: canvasData,
-        nodes: nextNodes.map(toNodeDTO),
-        edges: nextEdges.map(toEdgeDTO),
-      };
-      const updated = await updateDiagramContent(diagram.id, payload);
-      setDiagram(updated);
-    } finally {
-      setSaving(false);
-    }
+    const canvasData = buildCanvasData(diagram.title ?? diagram.titre, diagram.type, nextNodes, nextEdges);
+    const payload: UpdateDiagramPayload = {
+      title: diagram.title ?? diagram.titre,
+      titre: diagram.title ?? diagram.titre,
+      description: diagram.description ?? '',
+      type: diagram.type,
+      taskId: diagram.taskId,
+      etapes: diagram.etapes ?? [],
+      shared: diagram.shared,
+      isShared: diagram.isShared ?? diagram.shared,
+      canvasData,
+      content: canvasData,
+      nodes: nextNodes.map(toNodeDTO),
+      edges: nextEdges.map(toEdgeDTO),
+    };
+    const updated = await updateDiagramContent(diagram.id, payload);
+    setDiagram(updated);
   }, [diagram, edges, nodes]);
 
   const scheduleSave = useCallback((nextNodes: Node[], nextEdges: Edge[]) => {
@@ -173,10 +233,17 @@ const EditorInner = () => {
     saveTimer.current = window.setTimeout(() => saveNow(nextNodes, nextEdges), 2000);
   }, [saveNow, sendUpdate]);
 
+  useEffect(() => {
+    scheduleSaveRef.current = scheduleSave;
+  }, [scheduleSave]);
+
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((current) => {
+      const allowedChanges = changes.filter((change) => !isLockedNodeChange(change, current));
+      if (allowedChanges.length === 0) return current;
       history.push(current, edges);
-      const next = attachNodeHandlers(applyNodeChanges(changes, current), handleNodePatch);
+      const next = attachNodeHandlers(applyNodeChanges(allowedChanges, current), handleNodePatch);
+      nodesRef.current = next;
       scheduleSave(next, edges);
       return next;
     });
@@ -186,6 +253,7 @@ const EditorInner = () => {
     setEdges((current) => {
       history.push(nodes, current);
       const next = attachEdgeHandlers(applyEdgeChanges(changes, current), handleEdgePatch, handleEdgeDelete);
+      edgesRef.current = next;
       scheduleSave(nodes, next);
       return next;
     });
@@ -194,13 +262,18 @@ const EditorInner = () => {
   const onConnect = useCallback((connection: Connection) => {
     setEdges((current) => {
       history.push(nodes, current);
+      const sourceNode = nodes.find((node) => node.id === connection.source);
+      const targetNode = nodes.find((node) => node.id === connection.target);
+      const isSequenceMessage = sourceNode?.data?.shape === 'lifeline' && targetNode?.data?.shape === 'lifeline';
+      const isReturnMessage = isSequenceMessage && sourceNode.position.x > targetNode.position.x;
       const next = attachEdgeHandlers(addEdge({
         ...connection,
         id: `edge-${makeId()}`,
         type: 'diagramEdge',
         markerEnd: { type: MarkerType.ArrowClosed },
-        data: { edgeType: 'association', label: '' },
+        data: { edgeType: isSequenceMessage ? (isReturnMessage ? 'return' : 'message') : 'association', label: '', arrowStart: 'none', arrowEnd: 'filled' },
       }, current), handleEdgePatch, handleEdgeDelete);
+      edgesRef.current = next;
       scheduleSave(nodes, next);
       return next;
     });
@@ -215,7 +288,7 @@ const EditorInner = () => {
       height: shape.height,
       data: {
         shape: shape.type,
-        label: shape.label,
+        label: shape.defaultLabel ?? shape.label,
         fill: shape.type === 'note' ? '#fef9c3' : '#ffffff',
         borderColor: '#2563eb',
         width: shape.width,
@@ -226,10 +299,45 @@ const EditorInner = () => {
     setNodes((current) => {
       const next = [...current, newNode];
       history.push(current, edges);
+      nodesRef.current = next;
       scheduleSave(next, edges);
       return next;
     });
   }, [edges, handleNodePatch, history, scheduleSave]);
+
+  const createTextNode = useCallback(() => {
+    if (!wrapperRef.current) return;
+    const bounds = wrapperRef.current.getBoundingClientRect();
+    const position = reactFlow.project({ x: bounds.width / 2 - 110, y: bounds.height / 2 - 45 });
+    const newNode: Node = {
+      id: makeId(),
+      type: 'diagramNode',
+      position,
+      width: 220,
+      height: 90,
+      selected: true,
+      data: {
+        shape: 'textBox',
+        label: 'Texte',
+        fill: 'transparent',
+        borderColor: '#64748b',
+        borderWidth: 1,
+        bold: false,
+        fontSize: 14,
+        width: 220,
+        height: 90,
+        onChange: handleNodePatch,
+      },
+    };
+    setNodes((current) => {
+      const next = attachNodeHandlers([...current.map((node) => ({ ...node, selected: false })), newNode], handleNodePatch);
+      history.push(current, edges);
+      nodesRef.current = next;
+      scheduleSave(next, edges);
+      return next;
+    });
+    setSelectedTool('select');
+  }, [edges, handleNodePatch, history, reactFlow, scheduleSave]);
 
   const onDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -284,7 +392,7 @@ const EditorInner = () => {
     },
     selectAll: () => setNodes((current) => current.map((node) => ({ ...node, selected: true }))),
     deleteSelected: () => {
-      const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
+      const selectedIds = new Set(nodes.filter((node) => node.selected && !node.data?.locked).map((node) => node.id));
       const nextNodes = nodes.filter((node) => !selectedIds.has(node.id));
       const nextEdges = edges.filter((edge) => !edge.selected && !selectedIds.has(edge.source) && !selectedIds.has(edge.target));
       setNodes(nextNodes);
@@ -341,7 +449,7 @@ const EditorInner = () => {
   const filename = title.replace(/\s+/g, '-').toLowerCase();
 
   return (
-    <Box sx={{ height: 'calc(100vh - 96px)', display: 'flex', flexDirection: 'column', bgcolor: 'grey.50', m: -3 }}>
+    <Box sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', bgcolor: 'grey.50', m: -3, overflow: 'hidden' }}>
       <Box sx={{ height: 56, bgcolor: 'white', borderBottom: '1px solid', borderColor: 'grey.200', px: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Stack direction="row" spacing={1.5} alignItems="center">
           <IconButton onClick={() => navigate('/diagrams')}><ArrowBack /></IconButton>
@@ -368,10 +476,9 @@ const EditorInner = () => {
         selectedTool={selectedTool}
         zoom={zoom}
         showGrid={showGrid}
-        snapToGrid={snapToGrid}
+        showLibrary={showLibrary}
         undoCount={history.undoCount}
         redoCount={history.redoCount}
-        saving={saving}
         onToolChange={setSelectedTool}
         onUndo={handlers.undo}
         onRedo={handlers.redo}
@@ -379,20 +486,20 @@ const EditorInner = () => {
         onZoomOut={() => reactFlow.zoomOut()}
         onFit={() => reactFlow.fitView({ padding: 0.2 })}
         onToggleGrid={() => setShowGrid((value) => !value)}
-        onToggleSnap={() => setSnapToGrid((value) => !value)}
+        onToggleLibrary={() => setShowLibrary((value) => !value)}
+        onAddText={createTextNode}
         onAutoLayout={() => {
-          const next = attachNodeHandlers(applyAutoLayout(nodes, edges), handleNodePatch);
+          const lockedNodes = new Map(nodes.filter((node) => node.data?.locked).map((node) => [node.id, node]));
+          const next = attachNodeHandlers(applyAutoLayout(nodes, edges).map((node) => lockedNodes.get(node.id) ?? node), handleNodePatch);
           setNodes(next);
           scheduleSave(next, edges);
         }}
         onExportPNG={() => wrapperRef.current && exportToPNG(wrapperRef.current, filename)}
         onExportSVG={() => wrapperRef.current && exportToSVG(wrapperRef.current, filename)}
-        onShare={() => setDiagram({ ...diagram, shared: true, isShared: true })}
-        onSave={() => saveNow()}
       />
 
-      <Box sx={{ flex: 1, minHeight: 0, display: 'flex' }}>
-        <ShapeLibrary selectedShape={selectedShape?.type ?? null} onSelectShape={setSelectedShape} />
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
+        {showLibrary && <ShapeLibrary selectedShape={selectedShape?.type ?? null} onSelectShape={setSelectedShape} />}
         <Box ref={wrapperRef} sx={{ flex: 1, minWidth: 0, position: 'relative' }} onDrop={onDrop} onDragOver={(event) => event.preventDefault()} onMouseMove={onMouseMove}>
           <ReactFlow
             nodes={nodes}
@@ -424,7 +531,6 @@ const EditorInner = () => {
             defaultEdgeOptions={{ type: 'diagramEdge', markerEnd: { type: MarkerType.ArrowClosed } }}
           >
             {showGrid && <Background variant={BackgroundVariant.Dots} gap={18} size={1} />}
-            <MiniMap position="bottom-right" nodeColor={(node) => String(node.data?.fill ?? '#e2e8f0')} maskColor="rgba(15,23,42,.08)" />
             <Controls position="bottom-left" />
             <LiveCursors users={activeUsers} currentUserId={user?.id} />
           </ReactFlow>

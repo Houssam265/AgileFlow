@@ -15,10 +15,33 @@ interface ShortcutHandlers {
   saveNow: () => void;
 }
 
+const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false;
+
+  const tagName = target.tagName.toLowerCase();
+  return (
+    target.isContentEditable ||
+    tagName === 'input' ||
+    tagName === 'textarea' ||
+    tagName === 'select' ||
+    target.getAttribute('role') === 'textbox'
+  );
+};
+
 export const useKeyboardShortcuts = (handlers: ShortcutHandlers) => {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const ctrl = event.ctrlKey || event.metaKey;
+      const editingText = isEditableTarget(event.target);
+
+      if (editingText) {
+        if (ctrl && event.key.toLowerCase() === 's') {
+          event.preventDefault();
+          handlers.saveNow();
+        }
+        return;
+      }
+
       if (ctrl && event.key.toLowerCase() === 's') {
         event.preventDefault();
         handlers.saveNow();
