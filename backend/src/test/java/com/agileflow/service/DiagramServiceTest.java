@@ -7,9 +7,13 @@ import com.agileflow.entity.Diagram;
 import com.agileflow.entity.Project;
 import com.agileflow.entity.User;
 import com.agileflow.exception.ForbiddenOperationException;
+import com.agileflow.repository.DiagramCollaboratorRepository;
+import com.agileflow.repository.DiagramEdgeRepository;
+import com.agileflow.repository.DiagramNodeRepository;
 import com.agileflow.repository.DiagramRepository;
 import com.agileflow.repository.ProjectRepository;
 import com.agileflow.repository.TaskRepository;
+import com.agileflow.repository.TeamMemberRepository;
 import com.agileflow.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,6 +53,18 @@ class DiagramServiceTest {
 
     @Mock
     private TaskRepository taskRepository;
+
+    @Mock
+    private DiagramNodeRepository diagramNodeRepository;
+
+    @Mock
+    private DiagramEdgeRepository diagramEdgeRepository;
+
+    @Mock
+    private DiagramCollaboratorRepository collaboratorRepository;
+
+    @Mock
+    private TeamMemberRepository teamMemberRepository;
 
     @Mock
     private NotificationService notificationService;
@@ -101,11 +117,16 @@ class DiagramServiceTest {
         when(userRepository.findByEmail(manager.getEmail())).thenReturn(Optional.of(manager));
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
         when(taskRepository.findDistinctAssigneesByProjectId(project.getId())).thenReturn(List.of(developer));
+        Diagram[] savedDiagram = new Diagram[1];
         when(diagramRepository.save(any(Diagram.class))).thenAnswer(invocation -> {
             Diagram saved = invocation.getArgument(0);
             saved.setId(99L);
+            savedDiagram[0] = saved;
             return saved;
         });
+        when(diagramRepository.findWithRelationsById(99L)).thenAnswer(invocation -> Optional.of(savedDiagram[0]));
+        when(diagramNodeRepository.findAllByDiagramId(99L)).thenReturn(List.of());
+        when(diagramEdgeRepository.findAllByDiagramId(99L)).thenReturn(List.of());
 
         DiagramDTO dto = diagramService.createDiagram(new CreateDiagramRequest(
                 "Workflow release",
@@ -145,6 +166,7 @@ class DiagramServiceTest {
         authenticateAs(otherDeveloper);
         when(userRepository.findByEmail(otherDeveloper.getEmail())).thenReturn(Optional.of(otherDeveloper));
         when(diagramRepository.findWithRelationsById(diagram.getId())).thenReturn(Optional.of(diagram));
+        when(collaboratorRepository.findByDiagramIdAndUserId(diagram.getId(), otherDeveloper.getId())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> diagramService.updateDiagram(diagram.getId(), new UpdateDiagramRequest(
                 "Roadmap v2",

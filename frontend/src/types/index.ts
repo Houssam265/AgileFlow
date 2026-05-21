@@ -4,7 +4,22 @@ export type StoryPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type TaskStatut = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
 export type TaskPriorite = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type AnalyticsPeriod = 'WEEK' | 'MONTH' | 'SPRINT';
-export type DiagramType = 'FLOWCHART' | 'PROCESS' | 'DECISION' | 'CUSTOM';
+export type DiagramType =
+  | 'FLOWCHART'
+  | 'PROCESS'
+  | 'DECISION'
+  | 'UML'
+  | 'BPMN'
+  | 'ERD'
+  | 'NETWORK'
+  | 'MINDMAP'
+  | 'USE_CASE'
+  | 'CLASS'
+  | 'SEQUENCE'
+  | 'ACTIVITY'
+  | 'COMPONENT'
+  | 'DEPLOYMENT'
+  | 'CUSTOM';
 export type EmailNotificationType = 'SPRINT_START' | 'TASK_ASSIGNED' | 'DEADLINE' | 'MENTION';
 
 export interface User {
@@ -317,36 +332,126 @@ export interface ChatMessageDTO {
 
 export interface DiagramData {
   id: number;
+  title?: string;
+  description?: string | null;
   titre: string;
   type: DiagramType;
   etapes: string[];
   json: string;
+  canvasData?: string | null;
+  content?: string | null;
   projectId: number;
   projectName: string;
+  createdById?: number | null;
+  createdByName?: string | null;
   ownerId: number;
   ownerName: string;
   taskId: number | null;
   taskTitle: string | null;
+  isShared?: boolean;
   shared: boolean;
+  thumbnailUrl?: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  nodes?: DiagramNodeDTO[];
+  edges?: DiagramEdgeDTO[];
+  collaboratorsCount?: number;
 }
 
 export interface CreateDiagramPayload {
+  title?: string;
+  description?: string;
   titre: string;
   type: DiagramType;
   projectId: number;
   taskId?: number | null;
-  etapes: string[];
+  etapes?: string[];
   json?: string;
+  canvasData?: string;
+  content?: string;
+  thumbnailUrl?: string | null;
   shared: boolean;
+  isShared?: boolean;
+  nodes?: DiagramNodeDTO[];
+  edges?: DiagramEdgeDTO[];
 }
 
 export interface UpdateDiagramPayload {
+  title?: string;
+  description?: string | null;
   titre: string;
   type: DiagramType;
   taskId?: number | null;
-  etapes: string[];
+  etapes?: string[];
   json?: string;
+  canvasData?: string;
+  content?: string;
+  thumbnailUrl?: string | null;
   shared: boolean;
+  isShared?: boolean;
+  nodes?: DiagramNodeDTO[];
+  edges?: DiagramEdgeDTO[];
+}
+
+export interface DiagramNodeDTO {
+  id: string;
+  diagramId?: number | null;
+  type: string;
+  positionX: number;
+  positionY: number;
+  width?: number | null;
+  height?: number | null;
+  data?: string | null;
+  zIndex?: number | null;
+  locked?: boolean | null;
+}
+
+export interface DiagramEdgeDTO {
+  id: string;
+  diagramId?: number | null;
+  sourceNodeId: string;
+  targetNodeId: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+  edgeType?: string | null;
+  arrowStart?: string | null;
+  arrowEnd?: string | null;
+  data?: string | null;
+}
+
+export interface CollaboratorInfo {
+  userId: number;
+  username: string;
+  email?: string;
+  permission?: 'EDIT' | 'COMMENT' | 'VIEW';
+  color: string;
+  cursorX: number;
+  cursorY: number;
+  isActive: boolean;
+  lastSeen?: number;
+}
+
+export interface DiagramUpdateMessage {
+  type:
+    | 'NODE_ADDED'
+    | 'NODE_MOVED'
+    | 'NODE_UPDATED'
+    | 'NODE_DELETED'
+    | 'EDGE_ADDED'
+    | 'EDGE_UPDATED'
+    | 'EDGE_DELETED'
+    | 'CURSOR_MOVE'
+    | 'SELECTION_CHANGE'
+    | 'DIAGRAM_TITLE'
+    | 'FULL_SYNC'
+    | 'JOIN'
+    | 'LEAVE'
+    | 'ELEMENT_LOCK'
+    | 'ELEMENT_UNLOCK'
+    | 'CONTENT_UPDATE';
+  diagramId: number;
+  userId: number;
+  userName: string;
+  userColor: string;
+  payload: unknown;
 }

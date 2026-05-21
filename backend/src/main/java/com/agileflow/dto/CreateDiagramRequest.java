@@ -8,9 +8,14 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public record CreateDiagramRequest(
-        @NotBlank(message = "Le titre du diagramme est obligatoire.")
         @Size(max = 150, message = "Le titre ne doit pas depasser 150 caracteres.")
         String titre,
+
+        @Size(max = 150, message = "Le titre ne doit pas depasser 150 caracteres.")
+        String title,
+
+        @Size(max = 2000, message = "La description ne doit pas depasser 2000 caracteres.")
+        String description,
 
         @NotNull(message = "Le type du diagramme est obligatoire.")
         Diagram.Type type,
@@ -20,13 +25,56 @@ public record CreateDiagramRequest(
 
         Long taskId,
 
-        @NotNull(message = "Les etapes sont obligatoires.")
-        @Size(min = 1, max = 40, message = "Le diagramme doit contenir entre 1 et 40 etapes.")
+        @Size(max = 80, message = "Le diagramme doit contenir au maximum 80 etapes.")
         List<@NotBlank(message = "Une etape ne peut pas etre vide.") @Size(max = 200, message = "Une etape ne doit pas depasser 200 caracteres.") String> etapes,
 
-        @Size(max = 30000, message = "Le JSON du diagramme ne doit pas depasser 30000 caracteres.")
+        @Size(max = 500000, message = "Le JSON du diagramme ne doit pas depasser 500000 caracteres.")
         String json,
 
-        boolean shared
+        @Size(max = 500000, message = "Le JSON du canvas ne doit pas depasser 500000 caracteres.")
+        String canvasData,
+
+        @Size(max = 500000, message = "Le contenu du diagramme ne doit pas depasser 500000 caracteres.")
+        String content,
+
+        @Size(max = 1000, message = "L'URL de miniature ne doit pas depasser 1000 caracteres.")
+        String thumbnailUrl,
+
+        boolean shared,
+
+        Boolean isShared,
+
+        List<DiagramNodeDTO> nodes,
+
+        List<DiagramEdgeDTO> edges
 ) {
+    public CreateDiagramRequest(
+            String titre,
+            Diagram.Type type,
+            Long projectId,
+            Long taskId,
+            List<String> etapes,
+            String json,
+            boolean shared
+    ) {
+        this(titre, null, null, type, projectId, taskId, etapes, json, null, null, null, shared, shared, List.of(), List.of());
+    }
+
+    public String effectiveTitle() {
+        if (title != null && !title.isBlank()) {
+            return title.trim();
+        }
+        return titre != null ? titre.trim() : "";
+    }
+
+    public boolean effectiveShared() {
+        return isShared != null ? isShared : shared;
+    }
+
+    public String effectiveCanvasData() {
+        if (content != null && !content.isBlank()) {
+            return content;
+        }
+        return canvasData != null && !canvasData.isBlank() ? canvasData : json;
+    }
 }

@@ -19,7 +19,8 @@ import NotifCenter from '../pages/notifications/NotifCenter';
 
 const AnalyticsDashboard = lazy(() => import('../pages/analytics/AnalyticsDashboard'));
 const StatsPage = lazy(() => import('../pages/stats/StatsPage'));
-const DiagramFlow = lazy(() => import('../pages/diagrams/DiagramFlow'));
+const DiagramListPage = lazy(() => import('../pages/DiagramFlow/DiagramListPage'));
+const DiagramEditorPage = lazy(() => import('../pages/DiagramFlow/DiagramEditorPage'));
 
 const LazyPage = ({ children }: { children: ReactNode }) => (
   <Suspense fallback={null}>{children}</Suspense>
@@ -49,7 +50,8 @@ const AppRouter = () => (
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/analytics" element={<LazyPage><AnalyticsDashboard /></LazyPage>} />
         <Route path="/stats" element={<LazyPage><StatsPage /></LazyPage>} />
-        <Route path="/diagrams" element={<LazyPage><DiagramFlow /></LazyPage>} />
+        <Route path="/diagrams" element={<LazyPage><DiagramListPage /></LazyPage>} />
+        <Route path="/diagrams/:id" element={<LazyPage><DiagramEditorPage /></LazyPage>} />
         <Route path="/projects" element={<ProjectsListPage />} />
         <Route path="/users" element={<UsersListPage />} />
         <Route path="/users/:id" element={<UserProfilePage />} />
