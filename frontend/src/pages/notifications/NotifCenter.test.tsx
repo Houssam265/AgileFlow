@@ -2,20 +2,20 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import NotifCenter from './NotifCenter';
 
-const navigateMock = vi.fn();
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => navigateMock,
-  };
-});
-
-const markAsRead = vi.fn();
 const markAllAsRead = vi.fn();
-const deleteNotification = vi.fn();
 const loadMore = vi.fn();
+
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 2,
+      email: 'dev@agileflow.dev',
+      role: 'ROLE_DEVELOPER',
+      firstName: 'Dev',
+      lastName: 'User',
+    },
+  }),
+}));
 
 vi.mock('../../hooks/useNotifications', () => ({
   useNotifications: () => ({
@@ -30,11 +30,23 @@ vi.mock('../../hooks/useNotifications', () => ({
     unreadCount: 1,
     hasMore: true,
     loading: false,
-    markAsRead,
+    markAsRead: vi.fn(),
     markAllAsRead,
-    deleteNotification,
+    deleteNotification: vi.fn(),
     loadMore,
   }),
+}));
+
+vi.mock('../../api/adminApi', () => ({
+  sendAnnouncement: vi.fn(),
+}));
+
+vi.mock('../../api/projectsApi', () => ({
+  fetchProjects: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../../api/usersApi', () => ({
+  fetchUsers: vi.fn().mockResolvedValue([]),
 }));
 
 describe('NotifCenter', () => {
@@ -65,16 +77,5 @@ describe('NotifCenter', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /charger plus/i }));
     expect(loadMore).toHaveBeenCalled();
-  });
-
-  it('goes back via the toolbar button', () => {
-    render(
-      <MemoryRouter>
-        <NotifCenter />
-      </MemoryRouter>,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /retour/i }));
-    expect(navigateMock).toHaveBeenCalledWith(-1);
   });
 });

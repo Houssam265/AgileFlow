@@ -25,6 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 import { passwordMeetsPolicy, PASSWORD_REQUIREMENTS_TEXT } from '../../utils/passwordPolicy';
 
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const homeForRole = (role: string) => (role === 'ROLE_ADMIN' ? '/admin' : '/dashboard');
 
 const RegisterPage = () => {
   const [form, setForm] = useState({ prenom: '', nom: '', email: '', password: '', confirm: '' });
@@ -167,7 +168,7 @@ const RegisterPage = () => {
         firstName: data.prenom ?? form.prenom,
         lastName: data.nom ?? form.nom,
       }, data.refreshToken);
-      navigate('/dashboard', { replace: true });
+      navigate(homeForRole(data.role), { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Code OTP incorrect ou expire.');
     } finally {

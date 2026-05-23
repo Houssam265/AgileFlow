@@ -9,6 +9,7 @@ import { api } from '../../api/axiosInterceptor';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 const OAUTH_BASE_URL = API_URL.replace(/\/api\/?$/, '');
+const homeForRole = (role: string) => (role === 'ROLE_ADMIN' ? '/admin' : '/dashboard');
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -46,7 +47,7 @@ const LoginPage = () => {
         firstName: data.prenom ?? '',
         lastName: data.nom ?? '',
       }, data.refreshToken);
-      navigate('/dashboard', { replace: true });
+      navigate(homeForRole(data.role), { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Email ou mot de passe incorrect.');
     } finally {

@@ -19,14 +19,24 @@ vi.mock('../../context/AuthContext', () => ({
 }));
 
 const fetchAdminDashboard = vi.fn();
+const fetchActivityLogs = vi.fn();
 
 vi.mock('../../api/adminApi', () => ({
   fetchAdminDashboard: (...a: unknown[]) => fetchAdminDashboard(...a),
+  fetchActivityLogs: (...a: unknown[]) => fetchActivityLogs(...a),
 }));
 
 vi.mock('../../api/usersApi', () => ({
-  fetchUsers: vi.fn().mockResolvedValue([]),
+  fetchUsers: vi.fn().mockResolvedValue([
+    { id: 1, email: 'admin@agileflow.dev', firstName: 'Ada', lastName: 'Admin', role: 'ROLE_ADMIN', active: true, createdAt: null, lastLogin: null },
+  ]),
   deleteUser: vi.fn(),
+}));
+
+vi.mock('../../api/projectsApi', () => ({
+  fetchProjects: vi.fn().mockResolvedValue([
+    { id: 1, name: 'Core', description: null, startDate: null, endDate: null, status: 'ACTIF', managerId: 1, managerName: 'Ada Admin', sprintCount: 0, taskCount: 0 },
+  ]),
 }));
 
 describe('AdminPage', () => {
@@ -42,6 +52,7 @@ describe('AdminPage', () => {
       totalDiagrams: 2,
       totalNotifications: 30,
     });
+    fetchActivityLogs.mockResolvedValue({ content: [], totalElements: 0, totalPages: 0, size: 5, number: 0, hasNext: false });
   });
 
   it('loads dashboard metrics for an administrator', async () => {
@@ -55,9 +66,9 @@ describe('AdminPage', () => {
       expect(fetchAdminDashboard).toHaveBeenCalled();
     });
 
-    expect(screen.getByText('Administration')).toBeInTheDocument();
+    expect(screen.getByText('Tableau de bord administrateur')).toBeInTheDocument();
     expect(screen.getByText('4')).toBeInTheDocument();
-    expect(screen.getByText('Utilisateurs (total)')).toBeInTheDocument();
+    expect(screen.getByText('Utilisateurs')).toBeInTheDocument();
   });
 
   it('does not render the admin dashboard for a developer', async () => {
@@ -73,6 +84,6 @@ describe('AdminPage', () => {
       expect(fetchAdminDashboard).not.toHaveBeenCalled();
     });
 
-    expect(screen.queryByText('Administration')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tableau de bord administrateur')).not.toBeInTheDocument();
   });
 });

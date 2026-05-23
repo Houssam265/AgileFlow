@@ -12,6 +12,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
     long countByActifTrue();
+    List<User> findByActifTrueOrderByDateCreationDesc();
 
     @Query("""
             SELECT u FROM User u

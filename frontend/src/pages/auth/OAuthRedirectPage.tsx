@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import type { Role } from '../../types';
 
+const homeForRole = (role: Role) => (role === 'ROLE_ADMIN' ? '/admin' : '/dashboard');
+
 const OAuthRedirectPage = () => {
   const navigate = useNavigate();
   const { setAuth, token, user } = useAuth();
@@ -26,7 +28,7 @@ const OAuthRedirectPage = () => {
 
     if (!accessToken || !email || !role || Number.isNaN(userId)) {
       if (token && user) {
-        navigate('/dashboard', { replace: true });
+        navigate(homeForRole(user.role), { replace: true });
         return;
       }
       navigate('/login?oauthError=missing_token', { replace: true });
@@ -41,7 +43,7 @@ const OAuthRedirectPage = () => {
       lastName,
     }, refreshToken);
 
-    navigate('/dashboard', { replace: true });
+    navigate(homeForRole(role), { replace: true });
   }, [navigate, setAuth, token, user]);
 
   return (

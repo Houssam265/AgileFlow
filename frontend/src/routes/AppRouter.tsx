@@ -16,6 +16,7 @@ import BacklogPage from '../pages/backlog/BacklogPage';
 import KanbanBoard from '../pages/kanban/KanbanBoard';
 import SettingsPage from '../pages/settings/SettingsPage';
 import AdminPage from '../pages/admin/AdminPage';
+import ActivityLogsPage from '../pages/admin/ActivityLogsPage';
 import NotifCenter from '../pages/notifications/NotifCenter';
 
 const AnalyticsDashboard = lazy(() => import('../pages/analytics/AnalyticsDashboard'));
@@ -64,6 +65,7 @@ const AppRouter = () => (
         <Route path="/kanban" element={<KanbanBoard />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/activity-logs" element={<ActivityLogsPage />} />
         <Route path="/notifications" element={<NotifCenter />} />
       </Route>
 

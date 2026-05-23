@@ -74,10 +74,10 @@ describe('UserManagement (admin CRUD)', () => {
 
     await waitFor(() => expect(screen.getByText('bob@agileflow.dev')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Désactiver bob@agileflow.dev' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Desactiver bob@agileflow.dev' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Désactiver cet utilisateur ?' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Desactiver cet utilisateur ?' })).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /^confirmer$/i }));
@@ -87,3 +87,4 @@ describe('UserManagement (admin CRUD)', () => {
     });
   });
 });
+

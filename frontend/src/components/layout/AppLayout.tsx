@@ -22,9 +22,11 @@ import {
   AccountTree,
   ChevronLeft,
   Dashboard,
+  History,
   Group,
   Insights,
   Logout,
+  ManageAccounts,
   Menu as MenuIcon,
   People,
   Settings,
@@ -33,7 +35,7 @@ import {
   ViewKanban,
   ViewColumn,
   ChatBubbleOutline,
-  AdminPanelSettings,
+  NotificationsOutlined,
 } from '@mui/icons-material';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -57,6 +59,14 @@ const NAV_ITEMS = [
   { label: 'Equipes', path: '/teams', icon: <Group /> },
   { label: 'Sprints', path: '/sprints', icon: <Timeline /> },
   { label: 'Parametres', path: '/settings', icon: <Settings /> },
+];
+
+const ADMIN_NAV_ITEMS = [
+  { label: 'Dashboard', path: '/admin', icon: <Dashboard /> },
+  { label: 'Users', path: '/users', icon: <ManageAccounts /> },
+  { label: 'Analytics / Reports', path: '/analytics', icon: <Insights /> },
+  { label: 'Activity Logs', path: '/activity-logs', icon: <History /> },
+  { label: 'Notifications', path: '/notifications', icon: <NotificationsOutlined /> },
 ];
 
 const ROLE_LABELS: Record<string, { label: string; color: 'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success' }> = {
@@ -161,10 +171,7 @@ const AppLayout = () => {
         <Divider sx={{ borderColor: 'grey.700', mb: 1 }} />
 
         <List dense>
-          {(user?.role === 'ROLE_ADMIN'
-            ? [...NAV_ITEMS, { label: 'Administration', path: '/admin', icon: <AdminPanelSettings /> }]
-            : NAV_ITEMS
-          ).map(({ label, path, icon }) => {
+          {(user?.role === 'ROLE_ADMIN' ? ADMIN_NAV_ITEMS : NAV_ITEMS).map(({ label, path, icon }) => {
             const active = path === '/dashboard'
               ? location.pathname === path
               : location.pathname === path || location.pathname.startsWith(`${path}/`);
