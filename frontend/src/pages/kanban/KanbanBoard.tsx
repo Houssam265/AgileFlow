@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -62,7 +63,8 @@ const COLUMNS: { id: TaskStatut; title: string }[] = [
 
 const KanbanBoard = () => {
   const { user } = useAuth();
-  const canManage = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_MANAGER';
+  const [searchParams] = useSearchParams();
+  const highlightStoryId = searchParams.get('story') ? Number(searchParams.get('story')) : null;
 
   const sortTasksForColumn = useCallback((columnTasks: TaskItem[]) => (
     [...columnTasks].sort((a, b) => {
@@ -122,12 +124,17 @@ const KanbanBoard = () => {
       const [projData, usersData] = await Promise.all([fetchProjects(), fetchUsers()]);
       setProjects(projData);
       setUsers(usersData);
-      setSelectedProjectId(projData[0]?.id || null);
+      const projectParam = searchParams.get('project');
+      const parsedProject = projectParam ? Number(projectParam) : NaN;
+      const initialProject = Number.isFinite(parsedProject) && projData.some((p) => p.id === parsedProject)
+        ? parsedProject
+        : projData[0]?.id ?? null;
+      setSelectedProjectId(initialProject);
     } catch {
       setError('Impossible de charger les données initiales.');
       setLoading(false);
     }
-  }, []);
+  }, [searchParams]);
 
   const loadSprints = useCallback(async () => {
     if (!selectedProjectId) {
@@ -138,12 +145,18 @@ const KanbanBoard = () => {
     try {
       const data = await fetchSprintsByProject(selectedProjectId);
       setSprints(data);
-      const activeSprint = data.find((s) => s.statut === 'EN_COURS');
-      setSelectedSprintId(activeSprint?.id || data[0]?.id || null);
+      const sprintParam = searchParams.get('sprint');
+      const parsedSprint = sprintParam ? Number(sprintParam) : NaN;
+      if (Number.isFinite(parsedSprint) && data.some((s) => s.id === parsedSprint)) {
+        setSelectedSprintId(parsedSprint);
+      } else {
+        const activeSprint = data.find((s) => s.statut === 'EN_COURS');
+        setSelectedSprintId(activeSprint?.id || data[0]?.id || null);
+      }
     } catch {
       setError('Impossible de charger les sprints.');
     }
-  }, [selectedProjectId]);
+  }, [selectedProjectId, searchParams]);
 
   const loadTasks = useCallback(async () => {
     if (!selectedSprintId) {
@@ -324,6 +337,14 @@ const KanbanBoard = () => {
   ), [sortTasksForColumn, tasks]);
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId);
+  const canManage = Boolean(
+    user && selectedProject && (user.role === 'ROLE_ADMIN' || selectedProject.owner),
+  );
+
+  const storyTasks = useMemo(() => {
+    if (!highlightStoryId) return [];
+    return tasks.filter((t) => t.storyId === highlightStoryId);
+  }, [tasks, highlightStoryId]);
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -380,6 +401,12 @@ const KanbanBoard = () => {
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
+      {highlightStoryId != null && Number.isFinite(highlightStoryId) && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Filtre story #{highlightStoryId} : {storyTasks.length} tache(s) dans ce sprint.
+        </Alert>
+      )}
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
       ) : !selectedSprintId ? (
@@ -398,6 +425,7 @@ const KanbanBoard = () => {
                 id={col.id}
                 title={col.title}
                 tasks={tasksByColumn[col.id] || []}
+                highlightStoryId={highlightStoryId}
                 onTaskClick={(task) => {
                   setSelectedTask(task);
                   setDetailModalOpen(true);

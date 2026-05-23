@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField } from '@mui/material';
-import type { CreateProjectPayload, ProjectListItem, ProjectStatus, TeamListItem, UserListItem } from '../../types';
+import type { CreateProjectPayload, ProjectListItem, ProjectStatus, TeamListItem } from '../../types';
 
 const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'ACTIF', label: 'Actif' },
@@ -11,10 +11,7 @@ const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
 type Props = {
   open: boolean;
   saving: boolean;
-  users: UserListItem[];
   teams: TeamListItem[];
-  currentUserId?: number;
-  currentUserRole?: string;
   project?: ProjectListItem | null;
   onClose: () => void;
   onSubmit: (payload: CreateProjectPayload) => Promise<void>;
@@ -22,20 +19,14 @@ type Props = {
 
 const today = new Date().toISOString().slice(0, 10);
 
-const CreateProjectModal = ({ open, saving, users, teams, currentUserId, currentUserRole, project, onClose, onSubmit }: Props) => {
+const CreateProjectModal = ({ open, saving, teams, project, onClose, onSubmit }: Props) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState<ProjectStatus>('ACTIF');
-  const [managerId, setManagerId] = useState<number>(0);
   const [teamId, setTeamId] = useState<number | ''>('');
   const [error, setError] = useState<string | null>(null);
-
-  const managerOptions = useMemo(
-    () => users.filter((user) => user.role === 'ROLE_ADMIN' || user.role === 'ROLE_MANAGER'),
-    [users],
-  );
 
   useEffect(() => {
     if (!open) return;
@@ -46,16 +37,7 @@ const CreateProjectModal = ({ open, saving, users, teams, currentUserId, current
     setEndDate(project?.endDate ?? '');
     setStatus(project?.status ?? 'ACTIF');
     setTeamId(project?.teamId ?? '');
-    if (project?.managerId) {
-      setManagerId(project.managerId);
-      return;
-    }
-    if (currentUserRole === 'ROLE_MANAGER' && currentUserId) {
-      setManagerId(currentUserId);
-      return;
-    }
-    setManagerId(managerOptions[0]?.id ?? 0);
-  }, [open, project, currentUserId, currentUserRole, managerOptions]);
+  }, [open, project]);
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -70,10 +52,6 @@ const CreateProjectModal = ({ open, saving, users, teams, currentUserId, current
       setError('La date de fin doit etre posterieure a la date de debut.');
       return;
     }
-    if (!managerId) {
-      setError('Choisissez un manager.');
-      return;
-    }
 
     setError(null);
     await onSubmit({
@@ -82,7 +60,6 @@ const CreateProjectModal = ({ open, saving, users, teams, currentUserId, current
       startDate,
       endDate: endDate || undefined,
       status,
-      managerId,
       teamId: teamId || null,
     });
   };
@@ -92,39 +69,29 @@ const CreateProjectModal = ({ open, saving, users, teams, currentUserId, current
       <DialogTitle>{project ? 'Modifier le projet' : 'Nouveau projet'}</DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
         {error && <Alert severity="error">{error}</Alert>}
-        <TextField label="Nom du projet" value={name} onChange={(event) => setName(event.target.value)} fullWidth required />
-        <TextField label="Description" value={description} onChange={(event) => setDescription(event.target.value)} multiline minRows={3} fullWidth />
-        <TextField label="Date de debut" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} InputLabelProps={{ shrink: true }} required />
-        <TextField label="Date de fin" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} InputLabelProps={{ shrink: true }} />
-        <TextField select label="Statut" value={status} onChange={(event) => setStatus(event.target.value as ProjectStatus)}>
+        {!project && (
+          <Alert severity="info">
+            Vous serez le proprietaire de ce projet et pourrez inviter des membres ensuite.
+          </Alert>
+        )}
+        <TextField label="Nom du projet" value={name} onChange={(e) => setName(e.target.value)} fullWidth required />
+        <TextField label="Description" value={description} onChange={(e) => setDescription(e.target.value)} multiline minRows={3} fullWidth />
+        <TextField label="Date de debut" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} InputLabelProps={{ shrink: true }} required />
+        <TextField label="Date de fin" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} InputLabelProps={{ shrink: true }} />
+        <TextField select label="Statut" value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)}>
           {statusOptions.map((option) => (
             <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
           ))}
         </TextField>
         <TextField
           select
-          label="Manager"
-          value={managerId || ''}
-          onChange={(event) => setManagerId(Number(event.target.value))}
-          disabled={currentUserRole === 'ROLE_MANAGER'}
-        >
-          {managerOptions.map((user) => (
-            <MenuItem key={user.id} value={user.id}>
-              {user.firstName} {user.lastName} ({user.role.replace('ROLE_', '')})
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          label="Equipe"
+          label="Equipe (optionnel)"
           value={teamId}
-          onChange={(event) => setTeamId(event.target.value === '' ? '' : Number(event.target.value))}
+          onChange={(e) => setTeamId(e.target.value === '' ? '' : Number(e.target.value))}
         >
           <MenuItem value="">Aucune equipe</MenuItem>
           {teams.map((team) => (
-            <MenuItem key={team.id} value={team.id}>
-              {team.name}
-            </MenuItem>
+            <MenuItem key={team.id} value={team.id}>{team.name}</MenuItem>
           ))}
         </TextField>
       </DialogContent>

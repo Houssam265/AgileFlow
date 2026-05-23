@@ -49,7 +49,8 @@ const StepInputForm = ({ projects, initialDiagram, defaultProjectId = '', saving
   const loadTasks = useMemo(() => async (projId: number) => {
     setTasksLoading(true);
     try {
-      setTasks(await fetchTasksByProject(projId));
+      const loaded = await fetchTasksByProject(projId);
+      setTasks(Array.isArray(loaded) ? loaded : []);
     } catch {
       setTasks([]);
     } finally {

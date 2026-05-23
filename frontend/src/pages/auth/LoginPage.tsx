@@ -89,6 +89,11 @@ const LoginPage = () => {
               ),
             }}
           />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Link to="/forgot-password" style={{ color: '#1976d2', textDecoration: 'none', fontSize: 14 }}>
+              Mot de passe oublie ?
+            </Link>
+          </Box>
           <Button type="submit" variant="contained" size="large" fullWidth disabled={loading} sx={{ mt: 1, py: 1.5 }}>
             {loading ? <CircularProgress size={24} color="inherit" /> : 'Se connecter'}
           </Button>

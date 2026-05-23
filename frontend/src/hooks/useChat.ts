@@ -3,22 +3,30 @@ import { create } from 'zustand';
 import { IMessage, StompSubscription } from '@stomp/stompjs';
 import { useWebSocket } from './useWebSocket';
 import { useAuthStore } from '../store/authStore';
-import { fetchMessages, fetchOnlineUsers } from '../api/chatApi';
+import { fetchMessages, fetchPresenceSnapshot } from '../api/chatApi';
+import { usePresenceStore } from '../store/presenceStore';
 import { ChatMessageDTO, ChannelType } from '../types';
+
+export interface ChatIncomingAlert {
+  channelId: string;
+  channelName: string;
+  senderName: string;
+  preview: string;
+}
 
 interface ChatStore {
   unreadCounts: Record<string, number>;
   totalUnreadCount: number;
-  onlineUsers: number[];
+  incomingAlert: ChatIncomingAlert | null;
   incrementUnread: (channelId: string) => void;
   clearUnread: (channelId: string) => void;
-  setOnlineUsers: (users: number[]) => void;
+  setIncomingAlert: (alert: ChatIncomingAlert | null) => void;
 }
 
 export const useChatStore = create<ChatStore>((set) => ({
   unreadCounts: {},
   totalUnreadCount: 0,
-  onlineUsers: [],
+  incomingAlert: null,
   incrementUnread: (channelId) =>
     set((state) => {
       const newCounts = {
@@ -34,7 +42,7 @@ export const useChatStore = create<ChatStore>((set) => ({
       const total = Object.values(newCounts).reduce((sum, count) => sum + count, 0);
       return { unreadCounts: newCounts, totalUnreadCount: total };
     }),
-  setOnlineUsers: (users) => set({ onlineUsers: users }),
+  setIncomingAlert: (alert) => set({ incomingAlert: alert }),
 }));
 
 interface UseChatProps {
@@ -42,21 +50,35 @@ interface UseChatProps {
   projectId?: number | null;
   recipientId?: number | null;
   isMonitor?: boolean;
+  projectNames?: Record<number, string>;
+  contactNames?: Record<number, string>;
 }
 
 export const useChat = (props: UseChatProps = {}) => {
-  const { channelType, projectId, recipientId, isMonitor = false } = props;
+  const {
+    channelType,
+    projectId,
+    recipientId,
+    isMonitor = false,
+    projectNames = {},
+    contactNames = {},
+  } = props;
   const [messages, setMessages] = useState<ChatMessageDTO[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  
+
   const { subscribe, publish, connectionState } = useWebSocket();
   const { user } = useAuthStore();
-  const { incrementUnread, clearUnread, totalUnreadCount, onlineUsers, setOnlineUsers } = useChatStore();
+  const {
+    incrementUnread,
+    clearUnread,
+    totalUnreadCount,
+    setIncomingAlert,
+  } = useChatStore();
+  const setPresenceSnapshot = usePresenceStore((s) => s.setPresenceSnapshot);
 
   const getChannelId = useCallback((msg: ChatMessageDTO) => {
-    if (msg.channelType === 'GLOBAL') return 'global';
     if (msg.channelType === 'PROJECT') return `project-${msg.projectId}`;
     if (msg.channelType === 'PRIVATE') {
       const otherId = msg.senderId === user?.id ? msg.recipientId : msg.senderId;
@@ -65,11 +87,25 @@ export const useChat = (props: UseChatProps = {}) => {
     return 'unknown';
   }, [user?.id]);
 
-  const currentChannelId = channelType === 'GLOBAL' ? 'global' : 
-                          channelType === 'PROJECT' ? `project-${projectId}` :
-                          channelType === 'PRIVATE' ? `private-${recipientId}` : null;
+  const getChannelName = useCallback((msg: ChatMessageDTO) => {
+    if (msg.channelType === 'PROJECT' && msg.projectId) {
+      return projectNames[msg.projectId] ?? `Projet #${msg.projectId}`;
+    }
+    if (msg.channelType === 'PRIVATE') {
+      const otherId = msg.senderId === user?.id ? msg.recipientId : msg.senderId;
+      if (otherId && contactNames[otherId]) return contactNames[otherId];
+      return msg.senderName ?? 'Message direct';
+    }
+    return 'Chat';
+  }, [user?.id, projectNames, contactNames]);
 
-  // Load initial history
+  const currentChannelId =
+    channelType === 'PROJECT'
+      ? `project-${projectId}`
+      : channelType === 'PRIVATE'
+        ? `private-${recipientId}`
+        : null;
+
   const loadHistory = useCallback(async (page: number, clear: boolean = false) => {
     if (!channelType) return;
     setIsLoadingHistory(true);
@@ -78,10 +114,8 @@ export const useChat = (props: UseChatProps = {}) => {
       if (clear) {
         setMessages(data.content);
       } else {
-        // Prepend old messages for pagination
         setMessages((prev) => [...data.content, ...prev]);
       }
-      // Set hasMore based on content length (50 is the page size in backend)
       setHasMore(data.content.length === 50);
       setCurrentPage(page);
     } catch (error) {
@@ -91,103 +125,123 @@ export const useChat = (props: UseChatProps = {}) => {
     }
   }, [channelType, projectId, recipientId]);
 
-  // Handle subscription management
+  const handleIncomingMessage = useCallback((msg: ChatMessageDTO) => {
+    const msgChannelId = getChannelId(msg);
+    const isFromOther = msg.senderId !== user?.id;
+    const isOutsideCurrentView = isMonitor || msgChannelId !== currentChannelId;
+
+    if (isFromOther && isOutsideCurrentView) {
+      incrementUnread(msgChannelId);
+      setIncomingAlert({
+        channelId: msgChannelId,
+        channelName: getChannelName(msg),
+        senderName: msg.senderName ?? 'Utilisateur',
+        preview: msg.content.length > 80 ? `${msg.content.slice(0, 80)}…` : msg.content,
+      });
+    }
+
+    if (!isMonitor) {
+      const isProjectMatch =
+        channelType === 'PROJECT' && msg.channelType === 'PROJECT' && msg.projectId === projectId;
+      const isPrivateMatch =
+        channelType === 'PRIVATE' &&
+        msg.channelType === 'PRIVATE' &&
+        ((msg.senderId === user?.id && msg.recipientId === recipientId) ||
+          (msg.senderId === recipientId && msg.recipientId === user?.id));
+
+      if (isProjectMatch || isPrivateMatch) {
+        setMessages((prev) => [...prev, msg]);
+      }
+    }
+  }, [
+    channelType,
+    projectId,
+    recipientId,
+    user?.id,
+    isMonitor,
+    currentChannelId,
+    getChannelId,
+    getChannelName,
+    incrementUnread,
+    setIncomingAlert,
+  ]);
+
   useEffect(() => {
     if (connectionState !== 'CONNECTED' || !user) return;
 
     const subscriptions: StompSubscription[] = [];
 
-    const handleNewMessage = (msg: ChatMessageDTO) => {
-      const msgChannelId = getChannelId(msg);
-      
-      // If we are monitoring or if this message is for a channel we aren't currently viewing
-      // AND the message was NOT sent by the current user
-      if (msg.senderId !== user.id && (isMonitor || msgChannelId !== currentChannelId)) {
-        incrementUnread(msgChannelId);
-      }
-
-      // If this message belongs to the current view, add it to messages list
-      if (!isMonitor) {
-        const isGlobalMatch = channelType === 'GLOBAL' && msg.channelType === 'GLOBAL';
-        const isProjectMatch = channelType === 'PROJECT' && msg.channelType === 'PROJECT' && msg.projectId === projectId;
-        const isPrivateMatch = channelType === 'PRIVATE' && msg.channelType === 'PRIVATE' && 
-          ((msg.senderId === user.id && msg.recipientId === recipientId) || 
-           (msg.senderId === recipientId && msg.recipientId === user.id));
-
-        if (isGlobalMatch || isProjectMatch || isPrivateMatch) {
-          setMessages((prev) => [...prev, msg]);
-        }
-      }
-    };
-
     if (isMonitor) {
-      // Monitor mode: subscribe to global and private topics to track ALL unread
-      const globalSub = subscribe('/topic/chat/global', (m: IMessage) => handleNewMessage(JSON.parse(m.body)));
-      const privateSub = subscribe(`/topic/chat/private/${user.id}`, (m: IMessage) => handleNewMessage(JSON.parse(m.body)));
-      if (globalSub) subscriptions.push(globalSub);
-      if (privateSub) subscriptions.push(privateSub);
+      const inboxSub = subscribe(`/topic/chat/inbox/${user.id}`, (m: IMessage) =>
+        handleIncomingMessage(JSON.parse(m.body))
+      );
+      if (inboxSub) subscriptions.push(inboxSub);
     } else if (channelType) {
-      // Normal mode: subscribe to specific channel
-      let topic = '/topic/chat/global';
+      let topic = '';
       if (channelType === 'PROJECT' && projectId) {
         topic = `/topic/chat/project/${projectId}`;
       } else if (channelType === 'PRIVATE') {
         topic = `/topic/chat/private/${user.id}`;
       }
 
-      const mainSub = subscribe(topic, (m: IMessage) => handleNewMessage(JSON.parse(m.body)));
-      if (mainSub) subscriptions.push(mainSub);
-      
-      // Load history when channel changes
+      if (topic) {
+        const mainSub = subscribe(topic, (m: IMessage) => handleIncomingMessage(JSON.parse(m.body)));
+        if (mainSub) subscriptions.push(mainSub);
+      }
+
       loadHistory(0, true);
-      // Clear unread for this channel
       if (currentChannelId) clearUnread(currentChannelId);
     }
 
     return () => {
-      subscriptions.forEach(s => s?.unsubscribe());
+      subscriptions.forEach((s) => s?.unsubscribe());
     };
-  }, [connectionState, channelType, projectId, recipientId, user, subscribe, loadHistory, isMonitor, currentChannelId, getChannelId, incrementUnread, clearUnread]);
+  }, [
+    connectionState,
+    channelType,
+    projectId,
+    recipientId,
+    user,
+    subscribe,
+    loadHistory,
+    isMonitor,
+    currentChannelId,
+    handleIncomingMessage,
+    clearUnread,
+  ]);
 
-  // Presence management
   useEffect(() => {
     if (!user || connectionState !== 'CONNECTED') return;
 
-    // Send online status
-    publish('/chat/presence', { userId: user.id, isOnline: true });
-
-    // Subscribe to presence updates
     const presenceSub = subscribe('/topic/chat/presence', (message: IMessage) => {
-      const onlineIds: number[] = JSON.parse(message.body);
-      setOnlineUsers(onlineIds);
+      setPresenceSnapshot(JSON.parse(message.body));
     });
 
-    // Fetch initial online users
-    fetchOnlineUsers().then((ids) => {
-      setOnlineUsers(ids);
-    }).catch(console.error);
+    fetchPresenceSnapshot()
+      .then(setPresenceSnapshot)
+      .catch(console.error);
 
     return () => {
-      if (user && connectionState === 'CONNECTED') {
-        publish('/chat/presence', { userId: user.id, isOnline: false });
-      }
       if (presenceSub) presenceSub.unsubscribe();
     };
-  }, [connectionState, user?.id, subscribe, publish, setOnlineUsers]);
+  }, [connectionState, user?.id, subscribe, setPresenceSnapshot]);
 
-  const sendMessage = useCallback((content: string) => {
-    if (connectionState !== 'CONNECTED' || !user || !content.trim()) return;
+  const sendMessage = useCallback(
+    (content: string) => {
+      if (connectionState !== 'CONNECTED' || !user || !content.trim() || !channelType) return;
 
-    const messagePayload = {
-      senderId: user.id,
-      channelType,
-      projectId: channelType === 'PROJECT' ? projectId : null,
-      recipientId: channelType === 'PRIVATE' ? recipientId : null,
-      content: content.trim(),
-    };
+      const messagePayload = {
+        senderId: user.id,
+        channelType,
+        projectId: channelType === 'PROJECT' ? projectId : null,
+        recipientId: channelType === 'PRIVATE' ? recipientId : null,
+        content: content.trim(),
+      };
 
-    publish('/chat/send', messagePayload);
-  }, [connectionState, user, channelType, projectId, recipientId, publish]);
+      publish('/chat/send', messagePayload);
+    },
+    [connectionState, user, channelType, projectId, recipientId, publish]
+  );
 
   const loadMoreMessages = useCallback(() => {
     if (hasMore && !isLoadingHistory) {
@@ -197,7 +251,6 @@ export const useChat = (props: UseChatProps = {}) => {
 
   return {
     messages,
-    onlineUsers,
     sendMessage,
     loadMoreMessages,
     isLoadingHistory,

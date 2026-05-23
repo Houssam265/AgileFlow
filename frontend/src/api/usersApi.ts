@@ -11,6 +11,16 @@ export const fetchUserById = async (id: number) => {
   return data;
 };
 
+export const fetchMyProfile = async () => {
+  const { data } = await axiosInstance.get<UserDetail>('/users/me');
+  return data;
+};
+
+export const updateMyProfile = async (payload: { firstName: string; lastName: string }) => {
+  const { data } = await axiosInstance.put<UserListItem>('/users/me', payload);
+  return data;
+};
+
 export const createUser = async (payload: CreateUserPayload) => {
   const { data } = await axiosInstance.post<UserListItem>('/users', payload);
   return data;

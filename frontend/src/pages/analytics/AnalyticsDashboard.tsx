@@ -33,6 +33,7 @@ import { Assessment, Download, Refresh } from '@mui/icons-material';
 import { exportAnalyticsPdf, fetchAnalytics } from '../../api/analyticsApi';
 import { fetchProjects } from '../../api/projectsApi';
 import { fetchSprintsByProject, type SprintItem } from '../../api/sprintsApi';
+import ActivityHeatmap from '../../components/analytics/ActivityHeatmap';
 import type { AnalyticsData, AnalyticsPeriod, ProjectListItem } from '../../types';
 
 const PERIOD_LABELS: Record<AnalyticsPeriod, string> = {
@@ -260,9 +261,13 @@ const AnalyticsDashboard = () => {
             <StatCard title={metricCards[2]?.label} value={metricCards[2]?.value ?? 0} icon={<Assessment sx={{ fontSize: 40 }} />} />
           </Grid>
 
+          <Grid item xs={12}>
+            <ActivityHeatmap items={analytics.heatmap} />
+          </Grid>
+
           {/* Member Stats and Trend Side by Side */}
           <Grid item xs={12} lg={6}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 1, border: '1px solid', borderColor: 'divider', height: '100%' }}>
+            <Paper data-testid="member-stats" elevation={0} sx={{ p: 2.5, borderRadius: 1, border: '1px solid', borderColor: 'divider', height: '100%' }}>
               <Box>
                 <Typography variant="h6" fontWeight={800} sx={{ mb: 0.5 }}>Statistiques membres</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

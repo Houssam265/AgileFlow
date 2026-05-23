@@ -25,4 +25,13 @@ public class ChatPresence {
     @Column(name = "is_online")
     @Builder.Default
     private boolean isOnline = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private VisibilityStatus status = VisibilityStatus.ABSENT;
+
+    public enum VisibilityStatus {
+        LIVE, ABSENT, BUSY
+    }
 }

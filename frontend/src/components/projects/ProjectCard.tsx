@@ -34,7 +34,8 @@ const ProjectCard = ({ project, actions }: Props) => (
       </Stack>
 
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-        <Chip size="small" variant="outlined" label={`Manager: ${project.managerName || 'Non defini'}`} />
+        <Chip size="small" variant="outlined" color={project.owner ? 'primary' : 'default'} label={`Proprietaire: ${project.managerName || 'Non defini'}`} />
+        <Chip size="small" variant="outlined" label={`Membres: ${project.memberCount}`} />
         <Chip size="small" variant="outlined" label={`Equipe: ${project.teamName || 'Non definie'}`} />
         <Chip size="small" variant="outlined" label={`Sprints: ${project.sprintCount}`} />
         <Chip size="small" variant="outlined" label={`Taches: ${project.taskCount}`} />

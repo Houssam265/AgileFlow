@@ -46,6 +46,12 @@ public class UserStory {
     @EqualsAndHashCode.Exclude
     private Sprint sprint;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "epic_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Epic epic;
+
     @PrePersist
     void onCreate() {
         if (createdAt == null) {

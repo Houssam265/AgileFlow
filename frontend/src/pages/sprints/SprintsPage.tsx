@@ -36,7 +36,7 @@ import SprintPlanningModal from '../../components/sprints/SprintPlanningModal';
 
 const SprintsPage = () => {
   const { user } = useAuth();
-  const canManage = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_MANAGER';
+  const canManage = user?.role === 'ROLE_ADMIN';
 
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<number | ''>('');

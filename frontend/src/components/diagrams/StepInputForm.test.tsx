@@ -7,6 +7,10 @@ vi.mock('reactflow', () => ({
   MarkerType: { ArrowClosed: 'arrowclosed' },
 }));
 
+vi.mock('../../api/tasksApi', () => ({
+  fetchTasksByProject: vi.fn().mockResolvedValue([]),
+}));
+
 const projects: ProjectListItem[] = [
   {
     id: 10,
@@ -19,6 +23,8 @@ const projects: ProjectListItem[] = [
     managerName: 'Sara Manager',
     sprintCount: 1,
     taskCount: 3,
+    owner: false,
+    memberCount: 0,
   },
 ];
 

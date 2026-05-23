@@ -12,5 +12,7 @@ public record ProjectDTO(
         Long teamId,
         String teamName,
         Long sprintCount,
-        Long taskCount
+        Long taskCount,
+        boolean owner,
+        long memberCount
 ) {}

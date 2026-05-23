@@ -1,15 +1,6 @@
-import { Box, Typography } from '@mui/material';
-import NotificationPreferences from '../../components/users/NotificationPreferences';
+import { Navigate } from 'react-router-dom';
 
-const SettingsPage = () => {
-  return (
-    <Box sx={{ maxWidth: 1100 }}>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 3 }}>
-        Parametres
-      </Typography>
-      <NotificationPreferences />
-    </Box>
-  );
-};
+/** @deprecated Utiliser /profile/notifications */
+const SettingsPage = () => <Navigate to="/profile/notifications" replace />;
 
 export default SettingsPage;

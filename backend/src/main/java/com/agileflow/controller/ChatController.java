@@ -1,16 +1,14 @@
 package com.agileflow.controller;
 
 import com.agileflow.dto.ChatMessageDTO;
-import com.agileflow.entity.ChatMessage;
+import com.agileflow.entity.ChatPresence;
 import com.agileflow.service.ChatService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
-import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -23,25 +21,9 @@ public class ChatController {
     @MessageMapping("/chat/send")
     public void handleSendMessage(@Payload ChatMessageDTO messageDTO) {
         try {
-            ChatMessageDTO savedMessage = chatService.saveMessage(messageDTO);
-            String destination;
-
-            if (savedMessage.channelType() == ChatMessage.ChannelType.GLOBAL) {
-                destination = "/topic/chat/global";
-            } else if (savedMessage.channelType() == ChatMessage.ChannelType.PROJECT) {
-                destination = "/topic/chat/project/" + savedMessage.projectId();
-            } else {
-                String recipientDest = "/topic/chat/private/" + savedMessage.recipientId();
-                String senderDest = "/topic/chat/private/" + savedMessage.senderId();
-                
-                messagingTemplate.convertAndSend(recipientDest, savedMessage);
-                messagingTemplate.convertAndSend(senderDest, savedMessage);
-                return;
-            }
-
-            messagingTemplate.convertAndSend(destination, savedMessage);
-        } catch (Exception e) {
-            // Error logged by Spring or higher level
+            chatService.saveMessage(messageDTO);
+        } catch (Exception ignored) {
+            // ignore
         }
     }
 
@@ -49,14 +31,27 @@ public class ChatController {
     public void handlePresence(@Payload Map<String, Object> payload) {
         try {
             Long userId = Long.valueOf(payload.get("userId").toString());
-            boolean isOnline = (boolean) payload.get("isOnline");
+            boolean connected = payload.get("isOnline") == null || Boolean.parseBoolean(payload.get("isOnline").toString());
+            ChatPresence.VisibilityStatus status = parseStatus(payload.get("status"), connected);
 
-            chatService.updatePresence(userId, isOnline);
-            List<Long> onlineUsers = chatService.getOnlineUsers();
+            chatService.updatePresence(userId, connected, status);
+            chatService.broadcastPresenceSnapshot(messagingTemplate);
+        } catch (Exception ignored) {
+            // ignore
+        }
+    }
 
-            messagingTemplate.convertAndSend("/topic/chat/presence", onlineUsers);
-        } catch (Exception e) {
-            // Error logged by Spring or higher level
+    private ChatPresence.VisibilityStatus parseStatus(Object rawStatus, boolean connected) {
+        if (!connected) {
+            return ChatPresence.VisibilityStatus.ABSENT;
+        }
+        if (rawStatus == null) {
+            return ChatPresence.VisibilityStatus.LIVE;
+        }
+        try {
+            return ChatPresence.VisibilityStatus.valueOf(rawStatus.toString().trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return ChatPresence.VisibilityStatus.LIVE;
         }
     }
 }

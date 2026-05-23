@@ -47,6 +47,8 @@ class TaskServiceTest {
     private ActivityLogger activityLogger;
     @Mock
     private EmailNotificationService emailNotificationService;
+    @Mock
+    private ProjectAccessService projectAccessService;
 
     @InjectMocks
     private TaskService taskService;
@@ -104,6 +106,7 @@ class TaskServiceTest {
         when(userRepository.findByEmail(manager.getEmail())).thenReturn(Optional.of(manager));
         when(sprintRepository.findById(sprint.getId())).thenReturn(Optional.of(sprint));
         when(userRepository.findById(developer.getId())).thenReturn(Optional.of(developer));
+        when(projectAccessService.canManageProject(manager, project)).thenReturn(true);
         when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
             Task saved = invocation.getArgument(0);
             saved.setId(99L);
@@ -131,6 +134,7 @@ class TaskServiceTest {
         when(userRepository.findByEmail(manager.getEmail())).thenReturn(Optional.of(manager));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
         when(userRepository.findById(developer.getId())).thenReturn(Optional.of(developer));
+        when(projectAccessService.canManageProject(manager, project)).thenReturn(true);
         when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TaskDTO dto = taskService.assignTask(task.getId(), new AssignTaskRequest(developer.getId()));

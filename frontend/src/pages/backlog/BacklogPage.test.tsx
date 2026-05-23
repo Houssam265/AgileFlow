@@ -1,5 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import BacklogPage from './BacklogPage';
+
+const renderPage = () => render(
+  <MemoryRouter>
+    <BacklogPage />
+  </MemoryRouter>,
+);
 
 const { fetchBacklogByProject } = vi.hoisted(() => ({
   fetchBacklogByProject: vi.fn(),
@@ -30,6 +37,8 @@ vi.mock('../../api/projectsApi', () => ({
       managerName: 'Sara Manager',
       sprintCount: 2,
       taskCount: 0,
+      owner: true,
+      memberCount: 0,
     },
   ]),
 }));
@@ -41,6 +50,10 @@ vi.mock('../../api/backlogApi', () => ({
   deleteUserStory: vi.fn(),
   assignStoryToSprint: vi.fn(),
   removeStoryFromSprint: vi.fn(),
+}));
+
+vi.mock('../../api/tasksApi', () => ({
+  fetchTasksByProject: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('../../api/sprintsApi', () => ({
@@ -65,6 +78,7 @@ describe('BacklogPage', () => {
       id: 2,
       projectId: 12,
       projectName: 'Plateforme Agile',
+      epics: [],
       stories: priority === 'HIGH'
         ? [{
             id: 101,
@@ -77,6 +91,12 @@ describe('BacklogPage', () => {
             projectId: 12,
             sprintId: null,
             sprintLabel: null,
+            epicId: null,
+            epicTitle: null,
+            epicColor: null,
+            taskCount: 0,
+            completedTaskCount: 0,
+            done: false,
             createdAt: '2026-04-24T10:00:00',
           }]
         : [{
@@ -90,11 +110,17 @@ describe('BacklogPage', () => {
             projectId: 12,
             sprintId: null,
             sprintLabel: null,
+            epicId: null,
+            epicTitle: null,
+            epicColor: null,
+            taskCount: 0,
+            completedTaskCount: 0,
+            done: false,
             createdAt: '2026-04-24T09:00:00',
           }],
     }));
 
-    render(<BacklogPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Story moyenne')).toBeInTheDocument();

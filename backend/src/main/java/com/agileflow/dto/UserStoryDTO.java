@@ -11,6 +11,12 @@ public record UserStoryDTO(
         Long projectId,
         Long sprintId,
         String sprintLabel,
+        Long epicId,
+        String epicTitle,
+        String epicColor,
+        long taskCount,
+        long completedTaskCount,
+        boolean done,
         String createdAt
 ) {
 }

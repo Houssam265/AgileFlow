@@ -15,7 +15,6 @@ import {
 
 const ROLES: { value: Role; label: string }[] = [
   { value: 'ROLE_ADMIN', label: 'Administrateur' },
-  { value: 'ROLE_MANAGER', label: 'Manager' },
   { value: 'ROLE_DEVELOPER', label: 'Développeur' },
 ];
 

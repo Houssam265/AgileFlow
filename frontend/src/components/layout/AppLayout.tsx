@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   AppBar,
   Avatar,
@@ -25,11 +25,8 @@ import {
   History,
   Group,
   Insights,
-  Logout,
   ManageAccounts,
   Menu as MenuIcon,
-  People,
-  Settings,
   Timeline,
   QueryStats,
   ViewKanban,
@@ -40,8 +37,9 @@ import {
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import ChatPanel from '../chat/ChatPanel';
-import WebSocketStatus from '../WebSocketStatus';
+import VisibilityStatusControl from '../VisibilityStatusControl';
 import NotificationBell from '../notifications/NotificationBell';
+import ProfileMenuButton from '../profile/ProfileMenuButton';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useChat } from '../../hooks/useChat';
 
@@ -53,12 +51,10 @@ const NAV_ITEMS = [
   { label: 'Stats', path: '/stats', icon: <QueryStats /> },
   { label: 'DiagramFlow', path: '/diagrams', icon: <AccountTree /> },
   { label: 'Projets', path: '/projects', icon: <Assignment /> },
-  { label: 'Backlog', path: '/backlog', icon: <ViewKanban /> },
+  { label: 'Planification', path: '/backlog', icon: <ViewKanban /> },
   { label: 'Kanban', path: '/kanban', icon: <ViewColumn /> },
-  { label: 'Utilisateurs', path: '/users', icon: <People /> },
   { label: 'Equipes', path: '/teams', icon: <Group /> },
   { label: 'Sprints', path: '/sprints', icon: <Timeline /> },
-  { label: 'Parametres', path: '/settings', icon: <Settings /> },
 ];
 
 const ADMIN_NAV_ITEMS = [
@@ -78,49 +74,31 @@ const ROLE_LABELS: Record<string, { label: string; color: 'default' | 'primary' 
 const AppLayout = () => {
   const [open, setOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const { user, logout } = useAuth();
-  const { connectionState, publish } = useWebSocket();
-  const { totalUnreadCount } = useChat({ isMonitor: true });
+  const { user } = useAuth();
+  const { connectionState } = useWebSocket();
+  const { totalUnreadCount } = useChat({ isMonitor: true, projectNames: {}, contactNames: {} });
   const navigate = useNavigate();
   const location = useLocation();
-
-  useEffect(() => {
-    if (user && connectionState === 'CONNECTED') {
-      publish('/chat/presence', { userId: user.id, isOnline: true });
-      
-      const handleBeforeUnload = () => {
-        publish('/chat/presence', { userId: user.id, isOnline: false });
-      };
-
-      window.addEventListener('beforeunload', handleBeforeUnload);
-
-      return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        publish('/chat/presence', { userId: user.id, isOnline: false });
-      };
-    }
-  }, [user, connectionState, publish]);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
-  };
 
   const roleInfo = ROLE_LABELS[user?.role ?? ''] ?? { label: user?.role ?? '', color: 'default' };
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
       <AppBar position="fixed" elevation={0} sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: 'white', borderBottom: '1px solid', borderColor: 'divider' }}>
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Toolbar sx={{ justifyContent: 'space-between', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
             <IconButton onClick={() => setOpen(!open)} size="small">
               {open ? <ChevronLeft /> : <MenuIcon />}
             </IconButton>
-            <Typography variant="h6" fontWeight={800} color="primary.main">AgileFlow</Typography>
+            <Typography variant="h6" fontWeight={800} color="primary.main" noWrap>
+              AgileFlow
+            </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <WebSocketStatus connectionState={connectionState} />
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1.5 }, flexShrink: 0 }}>
+            <VisibilityStatusControl connectionState={connectionState} />
             <NotificationBell />
+            <ProfileMenuButton />
             <Tooltip title="Ouvrir le chat">
               <IconButton onClick={() => setIsChatOpen(!isChatOpen)} color="inherit" size="small" sx={{ color: 'text.secondary' }}>
                 <Badge badgeContent={totalUnreadCount} color="error">
@@ -128,13 +106,7 @@ const AppLayout = () => {
                 </Badge>
               </IconButton>
             </Tooltip>
-            <Chip label={roleInfo.label} color={roleInfo.color} size="small" />
-            <Typography variant="body2" color="text.secondary">{user?.email}</Typography>
-            <Tooltip title="Se deconnecter">
-              <IconButton onClick={handleLogout} color="default" size="small">
-                <Logout fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            <Chip label={roleInfo.label} color={roleInfo.color} size="small" sx={{ display: { xs: 'none', md: 'flex' } }} />
           </Box>
         </Toolbar>
       </AppBar>
@@ -162,7 +134,7 @@ const AppLayout = () => {
             {user?.firstName?.[0] ?? user?.email?.[0]?.toUpperCase()}
           </Avatar>
           {open && (
-            <Box>
+            <Box sx={{ minWidth: 0 }}>
               <Typography variant="body1" fontWeight={600} noWrap>{user?.firstName} {user?.lastName}</Typography>
               <Typography variant="caption" sx={{ color: 'grey.400' }} noWrap>{user?.email}</Typography>
             </Box>
@@ -199,12 +171,12 @@ const AppLayout = () => {
         </List>
       </Drawer>
 
-      <Box 
-        component="main" 
-        sx={{ 
-          flexGrow: 1, 
-          bgcolor: '#f8fafc', 
-          overflow: 'auto', 
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          bgcolor: '#f8fafc',
+          overflow: 'auto',
           minWidth: 0,
         }}
       >

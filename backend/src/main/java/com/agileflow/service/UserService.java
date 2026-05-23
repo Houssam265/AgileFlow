@@ -4,6 +4,7 @@ import com.agileflow.dto.*;
 import com.agileflow.entity.User;
 import com.agileflow.exception.ConflictException;
 import com.agileflow.exception.ResourceNotFoundException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.agileflow.repository.TeamMemberRepository;
 import com.agileflow.repository.UserRepository;
 import com.agileflow.validation.PasswordValidator;
@@ -40,6 +41,26 @@ public class UserService {
     public List<UserDTO> listUsers(String q) {
         String query = (q == null || q.isBlank()) ? null : q.trim();
         return userRepository.search(query).stream().map(UserService::toUserDTO).toList();
+    }
+
+    private User currentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur courant introuvable"));
+    }
+
+    @Transactional(readOnly = true)
+    public UserDetailDTO getMyProfile() {
+        return getUserById(currentUser().getId());
+    }
+
+    @Transactional
+    public UserDTO updateMyProfile(UpdateProfileRequest request) {
+        User actor = currentUser();
+        actor.setPrenom(request.firstName().trim());
+        actor.setNom(request.lastName().trim());
+        userRepository.save(actor);
+        return toUserDTO(actor);
     }
 
     @Transactional(readOnly = true)

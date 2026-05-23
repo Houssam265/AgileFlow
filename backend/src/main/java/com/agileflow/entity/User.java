@@ -27,6 +27,10 @@ public class User {
     private boolean emailVerified = true;
     private String emailVerificationOtpHash;
     private LocalDateTime emailVerificationOtpExpiresAt;
+
+    private String passwordResetOtpHash;
+    private LocalDateTime passwordResetOtpExpiresAt;
+    private LocalDateTime passwordResetVerifiedUntil;
     @Builder.Default
     private LocalDateTime dateCreation = LocalDateTime.now();
 

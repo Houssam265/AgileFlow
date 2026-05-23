@@ -146,6 +146,47 @@ export interface ProjectListItem {
   teamName?: string | null;
   sprintCount: number;
   taskCount: number;
+  owner: boolean;
+  memberCount: number;
+}
+
+export interface ProjectMember {
+  userId: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  owner: boolean;
+  joinedAt: string | null;
+}
+
+export interface InviteProjectMemberResult {
+  mode: 'INVITATION_SENT' | 'DIRECT_ADD' | 'EMAIL_SENT';
+  message: string;
+  member: ProjectMember | null;
+}
+
+export interface ProjectInvitation {
+  id: number;
+  projectId: number;
+  projectName: string;
+  inviterId: number;
+  inviterFirstName: string;
+  inviterLastName: string;
+  invitedEmail: string;
+  invitedUserId: number | null;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
+  createdAt: string;
+  expiresAt: string;
+  token: string;
+}
+
+export interface ProjectInvitationPreview {
+  projectName: string;
+  ownerName: string;
+  invitedEmail: string;
+  expired: boolean;
+  alreadyAccepted: boolean;
 }
 
 export interface CreateProjectPayload {
@@ -154,11 +195,17 @@ export interface CreateProjectPayload {
   startDate: string;
   endDate?: string;
   status: ProjectStatus;
-  managerId: number;
   teamId?: number | null;
 }
 
-export interface UpdateProjectPayload extends CreateProjectPayload {}
+export interface UpdateProjectPayload {
+  name: string;
+  description?: string;
+  startDate: string;
+  endDate?: string;
+  status: ProjectStatus;
+  teamId?: number | null;
+}
 
 export interface DashboardStats {
   role: Role;
@@ -176,6 +223,29 @@ export interface DashboardStats {
   doneTasks: number;
 }
 
+export type EpicStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
+
+export interface EpicItem {
+  id: number;
+  projectId: number;
+  title: string;
+  description: string | null;
+  status: EpicStatus;
+  color: string;
+  sortOrder: number;
+  startDate: string | null;
+  endDate: string | null;
+  storyCount: number;
+  plannedStoryCount: number;
+  doneStoryCount: number;
+  /** @deprecated use plannedStoryCount */
+  completedStoryCount: number;
+  totalTaskCount: number;
+  completedTaskCount: number;
+  totalStoryPoints: number;
+  progressPercent: number;
+}
+
 export interface UserStoryItem {
   id: number;
   title: string;
@@ -187,6 +257,12 @@ export interface UserStoryItem {
   projectId: number;
   sprintId: number | null;
   sprintLabel: string | null;
+  epicId: number | null;
+  epicTitle: string | null;
+  epicColor: string | null;
+  taskCount: number;
+  completedTaskCount: number;
+  done: boolean;
   createdAt: string | null;
 }
 
@@ -194,6 +270,7 @@ export interface BacklogData {
   id: number;
   projectId: number;
   projectName: string;
+  epics: EpicItem[];
   stories: UserStoryItem[];
 }
 
@@ -203,6 +280,16 @@ export interface CreateUserStoryPayload {
   priority: StoryPriority;
   storyPoints?: number | null;
   acceptanceCriteria?: string;
+  epicId?: number | null;
+}
+
+export interface CreateEpicPayload {
+  title: string;
+  description?: string;
+  status?: EpicStatus;
+  color?: string;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 export interface UpdateUserStoryPayload extends CreateUserStoryPayload {}

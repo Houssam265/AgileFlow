@@ -13,6 +13,7 @@ public interface UserStoryRepository extends JpaRepository<UserStory, Long> {
             JOIN FETCH us.backlog b
             JOIN FETCH b.project p
             LEFT JOIN FETCH us.sprint s
+            LEFT JOIN FETCH us.epic e
             WHERE p.id = :projectId
               AND (:priority IS NULL OR us.priority = :priority)
             ORDER BY
@@ -26,4 +27,8 @@ public interface UserStoryRepository extends JpaRepository<UserStory, Long> {
               us.id DESC
             """)
     List<UserStory> findByProjectIdAndPriority(@Param("projectId") Long projectId, @Param("priority") UserStory.Priority priority);
+
+    List<UserStory> findByEpic_Id(Long epicId);
+
+    List<UserStory> findBySprint_Id(Long sprintId);
 }

@@ -11,7 +11,7 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
-import java.util.List;
+import com.agileflow.entity.ChatPresence;
 
 @Component
 @RequiredArgsConstructor
@@ -30,11 +30,8 @@ public class WebSocketEventListener {
         if (email != null) {
             userRepository.findByEmail(email).ifPresent(user -> {
                 log.info("User disconnected: {}", email);
-                chatService.updatePresence(user.getId(), false);
-                
-                // Broadcast the updated online users list
-                List<Long> onlineUsers = chatService.getOnlineUsers();
-                messagingTemplate.convertAndSend("/topic/chat/presence", onlineUsers);
+                chatService.updatePresence(user.getId(), false, ChatPresence.VisibilityStatus.ABSENT);
+                chatService.broadcastPresenceSnapshot(messagingTemplate);
             });
         }
     }

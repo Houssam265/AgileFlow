@@ -14,26 +14,26 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Add, GroupAdd } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { createProject, deleteProject, fetchProjects, updateProject } from '../../api/projectsApi';
 import { fetchTeams } from '../../api/teamsApi';
-import { fetchUsers } from '../../api/usersApi';
-import type { CreateProjectPayload, ProjectListItem, TeamListItem, UserListItem } from '../../types';
+import type { CreateProjectPayload, ProjectListItem, TeamListItem } from '../../types';
 import CreateProjectModal from '../../components/projects/CreateProjectModal';
 import ProjectCard from '../../components/projects/ProjectCard';
+import ProjectInviteModal from '../../components/projects/ProjectInviteModal';
+import ProjectReceivedInvitations from '../../components/projects/ProjectReceivedInvitations';
 
 const ProjectsListPage = () => {
   const { user: current } = useAuth();
-  const canManage = current?.role === 'ROLE_ADMIN' || current?.role === 'ROLE_MANAGER';
 
   const [rows, setRows] = useState<ProjectListItem[]>([]);
-  const [users, setUsers] = useState<UserListItem[]>([]);
   const [teams, setTeams] = useState<TeamListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [inviteTarget, setInviteTarget] = useState<ProjectListItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [editTarget, setEditTarget] = useState<ProjectListItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProjectListItem | null>(null);
@@ -43,9 +43,8 @@ const ProjectsListPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const [projects, allUsers, teamRows] = await Promise.all([fetchProjects(), fetchUsers(), fetchTeams()]);
+      const [projects, teamRows] = await Promise.all([fetchProjects(), fetchTeams()]);
       setRows(projects);
-      setUsers(allUsers.filter((user) => user.active !== false));
       setTeams(teamRows);
     } catch {
       setError('Impossible de charger les projets.');
@@ -68,7 +67,7 @@ const ProjectsListPage = () => {
   }, [rows, search]);
 
   const canEditProject = (project: ProjectListItem) =>
-    current?.role === 'ROLE_ADMIN' || (current?.role === 'ROLE_MANAGER' && current.id === project.managerId);
+    current?.role === 'ROLE_ADMIN' || project.owner;
 
   const handleSave = async (payload: CreateProjectPayload) => {
     setSaving(true);
@@ -78,7 +77,7 @@ const ProjectsListPage = () => {
         setSnack({ msg: 'Projet mis a jour.', sev: 'success' });
       } else {
         await createProject(payload);
-        setSnack({ msg: 'Projet cree.', sev: 'success' });
+        setSnack({ msg: 'Projet cree. Vous en etes le proprietaire.', sev: 'success' });
       }
       setDialogOpen(false);
       setEditTarget(null);
@@ -114,7 +113,7 @@ const ProjectsListPage = () => {
         <Box>
           <Typography variant="h5" fontWeight={700}>Projets</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Centralisez les projets et suivez leur avancement.
+            Creez un projet, devenez proprietaire et invitez votre equipe.
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -125,32 +124,43 @@ const ProjectsListPage = () => {
             onChange={(event) => setSearch(event.target.value)}
             sx={{ minWidth: 280 }}
           />
-          {canManage && (
-            <Button variant="contained" startIcon={<Add />} onClick={() => { setEditTarget(null); setDialogOpen(true); }}>
-              Nouveau projet
-            </Button>
-          )}
+          <Button variant="contained" startIcon={<Add />} onClick={() => { setEditTarget(null); setDialogOpen(true); }}>
+            Nouveau projet
+          </Button>
         </Box>
       </Box>
+
+      <ProjectReceivedInvitations onAccepted={load} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
       ) : filtered.length === 0 ? (
-        <Alert severity="info">Aucun projet a afficher.</Alert>
+        <Alert severity="info">Aucun projet a afficher. Creez votre premier projet pour commencer.</Alert>
       ) : (
         <Grid container spacing={2.5}>
           {filtered.map((project) => (
             <Grid item xs={12} md={6} xl={4} key={project.id}>
               <ProjectCard
                 project={project}
-                actions={canEditProject(project) ? (
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                    <Button size="small" variant="outlined" onClick={() => { setEditTarget(project); setDialogOpen(true); }}>Modifier</Button>
-                    <Button size="small" color="error" onClick={() => setDeleteTarget(project)}>Supprimer</Button>
+                actions={(
+                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                    {canEditProject(project) && (
+                      <>
+                        <Button size="small" variant="outlined" startIcon={<GroupAdd />} onClick={() => setInviteTarget(project)}>
+                          Membres
+                        </Button>
+                        <Button size="small" variant="outlined" onClick={() => { setEditTarget(project); setDialogOpen(true); }}>
+                          Modifier
+                        </Button>
+                        <Button size="small" color="error" onClick={() => setDeleteTarget(project)}>
+                          Supprimer
+                        </Button>
+                      </>
+                    )}
                   </Box>
-                ) : undefined}
+                )}
               />
             </Grid>
           ))}
@@ -160,16 +170,20 @@ const ProjectsListPage = () => {
       <CreateProjectModal
         open={dialogOpen}
         saving={saving}
-        users={users}
         teams={teams}
-        currentUserId={current?.id}
-        currentUserRole={current?.role}
         project={editTarget}
         onClose={() => {
           setDialogOpen(false);
           setEditTarget(null);
         }}
         onSubmit={handleSave}
+      />
+
+      <ProjectInviteModal
+        open={!!inviteTarget}
+        project={inviteTarget}
+        onClose={() => setInviteTarget(null)}
+        onUpdated={load}
       />
 
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>

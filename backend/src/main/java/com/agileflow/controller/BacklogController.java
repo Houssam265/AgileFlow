@@ -29,7 +29,7 @@ public class BacklogController {
     }
 
     @PostMapping("/project/{projectId}/stories")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserStoryDTO> createStory(
             @PathVariable Long projectId,
             @Valid @RequestBody CreateUserStoryRequest request

@@ -1,19 +1,11 @@
 package com.agileflow.service;
 
 import com.agileflow.dto.*;
-import com.agileflow.entity.ActivityLog;
-import com.agileflow.entity.Backlog;
-import com.agileflow.entity.Project;
-import com.agileflow.entity.Sprint;
-import com.agileflow.entity.User;
-import com.agileflow.entity.UserStory;
+import com.agileflow.entity.*;
+import com.agileflow.exception.BadRequestException;
 import com.agileflow.exception.ForbiddenOperationException;
 import com.agileflow.exception.ResourceNotFoundException;
-import com.agileflow.repository.BacklogRepository;
-import com.agileflow.repository.ProjectRepository;
-import com.agileflow.repository.SprintRepository;
-import com.agileflow.repository.UserRepository;
-import com.agileflow.repository.UserStoryRepository;
+import com.agileflow.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -31,6 +23,9 @@ public class UserStoryService {
     private final SprintRepository sprintRepository;
     private final UserRepository userRepository;
     private final ActivityLogger activityLogger;
+    private final ProjectAccessService projectAccessService;
+    private final EpicService epicService;
+    private final TaskRepository taskRepository;
 
     private User currentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -38,21 +33,12 @@ public class UserStoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur courant introuvable"));
     }
 
-    private boolean isAdmin(User user) {
-        return user.getRole() == User.Role.ROLE_ADMIN;
-    }
-
     private boolean canViewProject(User actor, Project project) {
-        return isAdmin(actor)
-                || actor.getRole() == User.Role.ROLE_DEVELOPER
-                || (actor.getRole() == User.Role.ROLE_MANAGER && project.getManager() != null
-                && project.getManager().getId().equals(actor.getId()));
+        return projectAccessService.hasProjectAccess(actor, project);
     }
 
     private boolean canManageProject(User actor, Project project) {
-        return isAdmin(actor)
-                || (actor.getRole() == User.Role.ROLE_MANAGER && project.getManager() != null
-                && project.getManager().getId().equals(actor.getId()));
+        return projectAccessService.canManageProject(actor, project);
     }
 
     private Project getProjectOrThrow(Long projectId) {
@@ -73,6 +59,10 @@ public class UserStoryService {
     private UserStoryDTO toDto(UserStory story) {
         Sprint sprint = story.getSprint();
         Project project = story.getBacklog().getProject();
+        Epic epic = story.getEpic();
+        long taskCount = taskRepository.countByStory_Id(story.getId());
+        long completedTaskCount = taskRepository.countByStory_IdAndStatut(story.getId(), Task.Statut.DONE);
+        boolean done = taskCount > 0 && completedTaskCount == taskCount;
         return new UserStoryDTO(
                 story.getId(),
                 story.getTitre(),
@@ -84,6 +74,12 @@ public class UserStoryService {
                 project.getId(),
                 sprint != null ? sprint.getId() : null,
                 sprint != null ? sprint.getNom() : null,
+                epic != null ? epic.getId() : null,
+                epic != null ? epic.getTitre() : null,
+                epic != null ? epic.getColor() : null,
+                taskCount,
+                completedTaskCount,
+                done,
                 story.getCreatedAt() != null ? story.getCreatedAt().toString() : null
         );
     }
@@ -96,10 +92,11 @@ public class UserStoryService {
             throw new ForbiddenOperationException("Vous ne pouvez pas consulter le backlog de ce projet.");
         }
         Backlog backlog = getOrCreateBacklog(project);
+        List<EpicDTO> epics = epicService.listByProject(projectId);
         List<UserStoryDTO> stories = userStoryRepository.findByProjectIdAndPriority(projectId, priority).stream()
                 .map(this::toDto)
                 .toList();
-        return new BacklogDTO(backlog.getId(), project.getId(), project.getNom(), stories);
+        return new BacklogDTO(backlog.getId(), project.getId(), project.getNom(), epics, stories);
     }
 
     @Transactional
@@ -110,6 +107,7 @@ public class UserStoryService {
             throw new ForbiddenOperationException("Vous ne pouvez pas ajouter une user story a ce projet.");
         }
         Backlog backlog = getOrCreateBacklog(project);
+        Epic epic = epicService.resolveEpicForProject(request.epicId(), project);
         UserStory story = UserStory.builder()
                 .titre(request.title())
                 .description(request.description())
@@ -117,6 +115,7 @@ public class UserStoryService {
                 .storyPoints(request.storyPoints())
                 .acceptanceCriteria(request.acceptanceCriteria())
                 .backlog(backlog)
+                .epic(epic)
                 .build();
         UserStory saved = userStoryRepository.save(story);
         activityLogger.log(actor, ActivityLog.Action.STORY_CREATED, "User story creee: " + saved.getTitre(), project, null, null);
@@ -136,6 +135,7 @@ public class UserStoryService {
         story.setPriority(request.priority());
         story.setStoryPoints(request.storyPoints());
         story.setAcceptanceCriteria(request.acceptanceCriteria());
+        story.setEpic(epicService.resolveEpicForProject(request.epicId(), project));
         UserStory saved = userStoryRepository.save(story);
         activityLogger.log(actor, ActivityLog.Action.STORY_UPDATED, "User story mise a jour: " + saved.getTitre(), project, saved.getSprint(), null);
         return toDto(saved);
@@ -165,6 +165,10 @@ public class UserStoryService {
         if (!sprint.getProject().getId().equals(project.getId())) {
             throw new ForbiddenOperationException("Le sprint cible n'appartient pas au meme projet.");
         }
+        if (sprint.getStatut() == Sprint.Statut.FERME) {
+            throw new BadRequestException("Impossible d'ajouter une story a un sprint ferme.");
+        }
+        assertSprintCapacity(sprint, story);
         story.setSprint(sprint);
         UserStory saved = userStoryRepository.save(story);
         activityLogger.log(actor, ActivityLog.Action.STORY_PLANNED, "User story planifiee: " + saved.getTitre(), project, sprint, null);
@@ -183,5 +187,26 @@ public class UserStoryService {
         UserStory saved = userStoryRepository.save(story);
         activityLogger.log(actor, ActivityLog.Action.STORY_UNPLANNED, "User story deplanifiee: " + saved.getTitre(), saved.getBacklog().getProject(), previousSprint, null);
         return toDto(saved);
+    }
+
+    private void assertSprintCapacity(Sprint sprint, UserStory story) {
+        if (sprint.getCapacitePoints() == null || sprint.getCapacitePoints() <= 0) {
+            return;
+        }
+        if (story.getSprint() != null && story.getSprint().getId().equals(sprint.getId())) {
+            return;
+        }
+        int storyPoints = story.getStoryPoints() != null ? story.getStoryPoints() : 0;
+        int usedPoints = userStoryRepository.findBySprint_Id(sprint.getId()).stream()
+                .filter(s -> story.getSprint() == null || !s.getId().equals(story.getId()))
+                .map(UserStory::getStoryPoints)
+                .filter(p -> p != null)
+                .mapToInt(Integer::intValue)
+                .sum();
+        if (usedPoints + storyPoints > sprint.getCapacitePoints()) {
+            throw new BadRequestException(
+                    "Capacite du sprint depassee (" + usedPoints + "+" + storyPoints
+                            + " > " + sprint.getCapacitePoints() + " pts).");
+        }
     }
 }

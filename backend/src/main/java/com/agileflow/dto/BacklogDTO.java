@@ -6,6 +6,7 @@ public record BacklogDTO(
         Long id,
         Long projectId,
         String projectName,
+        List<EpicDTO> epics,
         List<UserStoryDTO> stories
 ) {
 }

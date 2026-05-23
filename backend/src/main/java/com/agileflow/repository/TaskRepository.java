@@ -26,6 +26,10 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     List<Task> findBySprint_Project_Id(Long projectId);
 
+    long countByStory_Id(Long storyId);
+
+    long countByStory_IdAndStatut(Long storyId, Task.Statut statut);
+
     List<Task> findByStory_Id(Long storyId);
 
     @Query("""

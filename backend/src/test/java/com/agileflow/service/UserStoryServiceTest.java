@@ -13,6 +13,7 @@ import com.agileflow.exception.ForbiddenOperationException;
 import com.agileflow.repository.BacklogRepository;
 import com.agileflow.repository.ProjectRepository;
 import com.agileflow.repository.SprintRepository;
+import com.agileflow.repository.TaskRepository;
 import com.agileflow.repository.UserRepository;
 import com.agileflow.repository.UserStoryRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +56,15 @@ class UserStoryServiceTest {
 
     @Mock
     private ActivityLogger activityLogger;
+
+    @Mock
+    private ProjectAccessService projectAccessService;
+
+    @Mock
+    private EpicService epicService;
+
+    @Mock
+    private TaskRepository taskRepository;
 
     @InjectMocks
     private UserStoryService userStoryService;
@@ -115,7 +125,11 @@ class UserStoryServiceTest {
         when(userRepository.findByEmail(developer.getEmail())).thenReturn(Optional.of(developer));
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
         when(backlogRepository.findByProjectId(project.getId())).thenReturn(Optional.of(backlog));
+        when(projectAccessService.hasProjectAccess(developer, project)).thenReturn(true);
+        when(epicService.listByProject(project.getId())).thenReturn(List.of());
         when(userStoryRepository.findByProjectIdAndPriority(project.getId(), UserStory.Priority.HIGH)).thenReturn(List.of(story));
+        when(taskRepository.countByStory_Id(story.getId())).thenReturn(0L);
+        when(taskRepository.countByStory_IdAndStatut(story.getId(), com.agileflow.entity.Task.Statut.DONE)).thenReturn(0L);
 
         BacklogDTO dto = userStoryService.getBacklogByProject(project.getId(), UserStory.Priority.HIGH);
 
@@ -129,13 +143,15 @@ class UserStoryServiceTest {
         authenticateAs(developer);
         when(userRepository.findByEmail(developer.getEmail())).thenReturn(Optional.of(developer));
         when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
+        when(projectAccessService.canManageProject(developer, project)).thenReturn(false);
 
         assertThatThrownBy(() -> userStoryService.createStory(project.getId(), new CreateUserStoryRequest(
                 "Story",
                 "Description",
                 UserStory.Priority.MEDIUM,
                 3,
-                "Critere"
+                "Critere",
+                null
         )))
                 .isInstanceOf(ForbiddenOperationException.class)
                 .hasMessageContaining("ajouter");
@@ -154,6 +170,9 @@ class UserStoryServiceTest {
         when(userRepository.findByEmail(manager.getEmail())).thenReturn(Optional.of(manager));
         when(userStoryRepository.findById(story.getId())).thenReturn(Optional.of(story));
         when(sprintRepository.findById(sprint.getId())).thenReturn(Optional.of(sprint));
+        when(projectAccessService.canManageProject(manager, project)).thenReturn(true);
+        when(taskRepository.countByStory_Id(story.getId())).thenReturn(0L);
+        when(taskRepository.countByStory_IdAndStatut(story.getId(), com.agileflow.entity.Task.Statut.DONE)).thenReturn(0L);
         when(userStoryRepository.save(any(UserStory.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         UserStoryDTO dto = userStoryService.assignToSprint(story.getId(), sprint.getId());
@@ -168,6 +187,10 @@ class UserStoryServiceTest {
         authenticateAs(manager);
         when(userRepository.findByEmail(manager.getEmail())).thenReturn(Optional.of(manager));
         when(userStoryRepository.findById(story.getId())).thenReturn(Optional.of(story));
+        when(projectAccessService.canManageProject(manager, project)).thenReturn(true);
+        when(epicService.resolveEpicForProject(null, project)).thenReturn(null);
+        when(taskRepository.countByStory_Id(story.getId())).thenReturn(0L);
+        when(taskRepository.countByStory_IdAndStatut(story.getId(), com.agileflow.entity.Task.Statut.DONE)).thenReturn(0L);
         when(userStoryRepository.save(any(UserStory.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         UserStoryDTO dto = userStoryService.updateStory(story.getId(), new UpdateUserStoryRequest(
@@ -175,7 +198,8 @@ class UserStoryServiceTest {
                 "Description mise a jour",
                 UserStory.Priority.CRITICAL,
                 8,
-                "Critere precise"
+                "Critere precise",
+                null
         ));
 
         assertThat(dto.title()).isEqualTo("Story revue");

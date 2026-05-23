@@ -24,6 +24,18 @@ public class UserController {
         return userService.listUsers(q);
     }
 
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public UserDetailDTO getMyProfile() {
+        return userService.getMyProfile();
+    }
+
+    @PutMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public UserDTO updateMyProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        return userService.updateMyProfile(request);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public UserDetailDTO getUser(@PathVariable Long id) {

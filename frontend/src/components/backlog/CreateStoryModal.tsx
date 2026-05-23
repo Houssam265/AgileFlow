@@ -12,12 +12,13 @@ import {
   Stack,
   TextField,
 } from '@mui/material';
-import type { CreateUserStoryPayload, StoryPriority, UserStoryItem } from '../../types';
+import type { CreateUserStoryPayload, EpicItem, StoryPriority, UserStoryItem } from '../../types';
 
 type Props = {
   open: boolean;
   saving: boolean;
   story?: UserStoryItem | null;
+  epics?: EpicItem[];
   onClose: () => void;
   onSubmit: (payload: CreateUserStoryPayload) => Promise<void>;
 };
@@ -28,9 +29,10 @@ const EMPTY_FORM: CreateUserStoryPayload = {
   priority: 'MEDIUM',
   storyPoints: null,
   acceptanceCriteria: '',
+  epicId: null,
 };
 
-const CreateStoryModal = ({ open, saving, story, onClose, onSubmit }: Props) => {
+const CreateStoryModal = ({ open, saving, story, epics = [], onClose, onSubmit }: Props) => {
   const [form, setForm] = useState<CreateUserStoryPayload>(EMPTY_FORM);
 
   useEffect(() => {
@@ -41,6 +43,7 @@ const CreateStoryModal = ({ open, saving, story, onClose, onSubmit }: Props) => 
         priority: story.priority,
         storyPoints: story.storyPoints ?? null,
         acceptanceCriteria: story.acceptanceCriteria ?? '',
+        epicId: story.epicId,
       } : EMPTY_FORM);
     }
   }, [open, story]);
@@ -77,6 +80,22 @@ const CreateStoryModal = ({ open, saving, story, onClose, onSubmit }: Props) => 
             minRows={3}
             fullWidth
           />
+          {epics.length > 0 && (
+            <FormControl fullWidth>
+              <InputLabel id="story-epic-label">Epic</InputLabel>
+              <Select
+                labelId="story-epic-label"
+                label="Epic"
+                value={form.epicId ?? ''}
+                onChange={(event) => handleChange('epicId', event.target.value === '' ? null : Number(event.target.value))}
+              >
+                <MenuItem value="">Sans epic</MenuItem>
+                {epics.map((epic) => (
+                  <MenuItem key={epic.id} value={epic.id}>{epic.title}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <FormControl fullWidth>
               <InputLabel id="story-priority-label">Priorite</InputLabel>

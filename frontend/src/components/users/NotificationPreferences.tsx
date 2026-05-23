@@ -39,9 +39,15 @@ const OPTIONS: Array<{ key: PreferenceKey; type: EmailNotificationType; label: s
 
 type Props = {
   title?: string;
+  description?: string;
+  embedded?: boolean;
 };
 
-const NotificationPreferences = ({ title = 'Preferences email' }: Props) => {
+const NotificationPreferences = ({
+  title = 'Preferences email',
+  description = 'Active ou coupe les emails automatiques par type de notification.',
+  embedded = false,
+}: Props) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [preferences, setPreferences] = useState<EmailPreferences | null>(null);
@@ -143,12 +149,10 @@ const NotificationPreferences = ({ title = 'Preferences email' }: Props) => {
     return <Alert severity="error">{error ?? 'Preferences introuvables.'}</Alert>;
   }
 
-  return (
-    <Paper sx={{ p: 3, borderRadius: 2 }} elevation={0} data-testid="notification-preferences">
-      <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>{title}</Typography>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Active ou coupe les emails automatiques par type de notification.
-      </Typography>
+  const content = (
+    <>
+      <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>{title}</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>{description}</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Grid container spacing={3}>
@@ -190,6 +194,16 @@ const NotificationPreferences = ({ title = 'Preferences email' }: Props) => {
           <EmailPreviewCard preview={preview} />
         </Grid>
       </Grid>
+    </>
+  );
+
+  const paperSx = embedded
+    ? { p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }
+    : { p: 3, borderRadius: 2 };
+
+  return (
+    <Paper elevation={0} sx={paperSx} data-testid="notification-preferences">
+      {content}
     </Paper>
   );
 };

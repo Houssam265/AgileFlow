@@ -8,11 +8,11 @@ import com.agileflow.entity.Sprint;
 import com.agileflow.entity.User;
 import com.agileflow.exception.BadRequestException;
 import com.agileflow.exception.ForbiddenOperationException;
+import com.agileflow.repository.ProjectMemberRepository;
 import com.agileflow.repository.ProjectRepository;
 import com.agileflow.repository.SprintRepository;
 import com.agileflow.repository.TaskRepository;
 import com.agileflow.repository.TeamRepository;
-import com.agileflow.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,16 +20,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,9 +39,6 @@ class ProjectServiceTest {
     private ProjectRepository projectRepository;
 
     @Mock
-    private UserRepository userRepository;
-
-    @Mock
     private SprintRepository sprintRepository;
 
     @Mock
@@ -53,32 +48,38 @@ class ProjectServiceTest {
     private TeamRepository teamRepository;
 
     @Mock
+    private ProjectMemberRepository projectMemberRepository;
+
+    @Mock
     private ActivityLogger activityLogger;
+
+    @Mock
+    private ProjectAccessService projectAccessService;
 
     @InjectMocks
     private ProjectService projectService;
 
-    private User admin;
-    private User manager;
+    private User owner;
+    private User otherUser;
     private Project project;
 
     @BeforeEach
     void setUp() {
-        admin = User.builder()
+        owner = User.builder()
                 .id(1L)
-                .email("admin@agileflow.dev")
-                .prenom("Admin")
-                .nom("Root")
-                .role(User.Role.ROLE_ADMIN)
+                .email("owner@agileflow.dev")
+                .prenom("Sara")
+                .nom("Owner")
+                .role(User.Role.ROLE_DEVELOPER)
                 .actif(true)
                 .build();
 
-        manager = User.builder()
+        otherUser = User.builder()
                 .id(2L)
-                .email("manager@agileflow.dev")
-                .prenom("Sara")
-                .nom("Manager")
-                .role(User.Role.ROLE_MANAGER)
+                .email("other@agileflow.dev")
+                .prenom("Lina")
+                .nom("Other")
+                .role(User.Role.ROLE_DEVELOPER)
                 .actif(true)
                 .build();
 
@@ -89,21 +90,20 @@ class ProjectServiceTest {
                 .dateDebut(LocalDate.of(2026, 4, 1))
                 .dateFin(LocalDate.of(2026, 6, 1))
                 .statut(Project.Statut.ACTIF)
-                .manager(manager)
+                .manager(owner)
                 .build();
     }
 
     @Test
-    void createProject_persistsProjectWithValidatedManager() {
-        authenticateAs(admin);
-        when(userRepository.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
-        when(userRepository.findById(manager.getId())).thenReturn(Optional.of(manager));
+    void createProject_setsCurrentUserAsOwner() {
+        when(projectAccessService.currentUser()).thenReturn(owner);
         when(projectRepository.save(any(Project.class))).thenAnswer(invocation -> {
             Project saved = invocation.getArgument(0);
             saved.setId(99L);
             return saved;
         });
         when(sprintRepository.findByProjectId(99L)).thenReturn(List.of());
+        when(projectMemberRepository.countByProject_Id(99L)).thenReturn(0L);
 
         ProjectDTO dto = projectService.createProject(new CreateProjectRequest(
                 "Portail Web",
@@ -111,7 +111,7 @@ class ProjectServiceTest {
                 LocalDate.of(2026, 5, 1),
                 LocalDate.of(2026, 7, 15),
                 Project.Statut.ACTIF,
-                manager.getId(),
+                null,
                 null
         ));
 
@@ -120,46 +120,35 @@ class ProjectServiceTest {
         Project saved = captor.getValue();
 
         assertThat(saved.getNom()).isEqualTo("Portail Web");
-        assertThat(saved.getManager()).isEqualTo(manager);
+        assertThat(saved.getManager()).isEqualTo(owner);
         assertThat(dto.id()).isEqualTo(99L);
-        assertThat(dto.managerName()).isEqualTo("Sara Manager");
+        assertThat(dto.managerName()).isEqualTo("Sara Owner");
+        assertThat(dto.owner()).isTrue();
     }
 
     @Test
-    void updateProject_rejectsManagerWhoTriesToTransferProject() {
-        authenticateAs(manager);
-        User otherManager = User.builder()
-                .id(3L)
-                .email("other@agileflow.dev")
-                .prenom("Lina")
-                .nom("Other")
-                .role(User.Role.ROLE_MANAGER)
-                .actif(true)
-                .build();
-        when(userRepository.findByEmail(manager.getEmail())).thenReturn(Optional.of(manager));
-        when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
-        when(userRepository.findById(otherManager.getId())).thenReturn(Optional.of(otherManager));
+    void updateProject_rejectsNonOwner() {
+        when(projectAccessService.getProjectOrThrow(project.getId())).thenReturn(project);
+        when(projectAccessService.currentUser()).thenReturn(otherUser);
+        doThrow(new ForbiddenOperationException("Seul le proprietaire du projet peut effectuer cette action."))
+                .when(projectAccessService).assertCanManageProject(otherUser, project);
 
         assertThatThrownBy(() -> projectService.updateProject(project.getId(), new UpdateProjectRequest(
                 "Migration API v2",
-                "Tentative de transfert",
+                "Tentative de modification",
                 LocalDate.of(2026, 4, 1),
                 LocalDate.of(2026, 6, 1),
                 Project.Statut.ACTIF,
-                otherManager.getId(),
                 null
-        )))
-                .isInstanceOf(ForbiddenOperationException.class)
-                .hasMessageContaining("transferer");
+        ))).isInstanceOf(ForbiddenOperationException.class);
 
         verify(projectRepository, never()).save(any(Project.class));
     }
 
     @Test
     void deleteProject_rejectsProjectWithSprints() {
-        authenticateAs(admin);
-        when(userRepository.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
-        when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
+        when(projectAccessService.getProjectOrThrow(project.getId())).thenReturn(project);
+        when(projectAccessService.currentUser()).thenReturn(owner);
         when(sprintRepository.findByProjectId(project.getId())).thenReturn(List.of(
                 Sprint.builder().id(1L).nom("Sprint 1").project(project).build()
         ));
@@ -169,11 +158,5 @@ class ProjectServiceTest {
                 .hasMessageContaining("sprints");
 
         verify(projectRepository, never()).delete(any(Project.class));
-    }
-
-    private void authenticateAs(User user) {
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(user.getEmail(), null, List.of())
-        );
     }
 }

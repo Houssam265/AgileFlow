@@ -1,6 +1,7 @@
 package com.agileflow.service;
 
 import com.agileflow.entity.User;
+import com.agileflow.exception.BadRequestException;
 import com.agileflow.repository.UserRepository;
 import com.agileflow.security.JwtUtil;
 import com.agileflow.validation.PasswordValidator;
@@ -140,6 +141,97 @@ public class AuthService {
         userRepository.save(user);
 
         return generateTokens(user);
+    }
+
+    @Transactional
+    public OtpResponse requestPasswordReset(ForgotPasswordRequest request) {
+        String email = normalizeEmail(request.email());
+        userRepository.findByEmail(email).ifPresent(user -> {
+            if (user.isEmailVerified() && user.isActif()) {
+                issuePasswordResetOtp(user);
+            }
+        });
+        return genericPasswordResetResponse(email);
+    }
+
+    @Transactional
+    public OtpResponse resendPasswordReset(ForgotPasswordRequest request) {
+        return requestPasswordReset(request);
+    }
+
+    @Transactional
+    public MessageResponse verifyPasswordResetOtp(VerifyPasswordResetOtpRequest request) {
+        User user = userRepository.findByEmail(normalizeEmail(request.email()))
+                .orElseThrow(() -> new BadRequestException("Code incorrect ou expire."));
+
+        assertValidPasswordResetOtp(user, request.otp());
+
+        user.setPasswordResetOtpHash(null);
+        user.setPasswordResetOtpExpiresAt(null);
+        user.setPasswordResetVerifiedUntil(LocalDateTime.now().plusMinutes(OTP_EXPIRATION_MINUTES));
+        userRepository.save(user);
+
+        return new MessageResponse("Code verifie. Vous pouvez definir votre nouveau mot de passe.");
+    }
+
+    @Transactional
+    public MessageResponse resetPassword(ResetPasswordRequest request) {
+        passwordValidator.assertValid(request.newPassword());
+        if (!request.newPassword().equals(request.confirmPassword())) {
+            throw new BadRequestException("Les mots de passe ne correspondent pas.");
+        }
+
+        User user = userRepository.findByEmail(normalizeEmail(request.email()))
+                .orElseThrow(() -> new BadRequestException("Session de reinitialisation invalide."));
+
+        assertPasswordResetVerified(user);
+
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        user.setPasswordResetOtpHash(null);
+        user.setPasswordResetOtpExpiresAt(null);
+        user.setPasswordResetVerifiedUntil(null);
+        userRepository.save(user);
+
+        return new MessageResponse("Mot de passe reinitialise avec succes. Vous pouvez vous connecter.");
+    }
+
+    private void issuePasswordResetOtp(User user) {
+        String otp = generateOtp();
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(OTP_EXPIRATION_MINUTES);
+        user.setPasswordResetOtpHash(passwordEncoder.encode(otp));
+        user.setPasswordResetOtpExpiresAt(expiresAt);
+        user.setPasswordResetVerifiedUntil(null);
+        userRepository.save(user);
+        emailVerificationService.sendPasswordResetCode(user, otp, expiresAt);
+    }
+
+    private void assertValidPasswordResetOtp(User user, String rawOtp) {
+        if (isBlank(user.getPasswordResetOtpHash()) || user.getPasswordResetOtpExpiresAt() == null) {
+            throw new BadRequestException("Aucun code de reinitialisation actif. Demandez un nouveau code.");
+        }
+        if (LocalDateTime.now().isAfter(user.getPasswordResetOtpExpiresAt())) {
+            throw new BadRequestException("Code expire. Demandez un nouveau code.");
+        }
+        if (!passwordEncoder.matches(normalizeOtp(rawOtp), user.getPasswordResetOtpHash())) {
+            throw new BadRequestException("Code incorrect.");
+        }
+    }
+
+    private void assertPasswordResetVerified(User user) {
+        if (user.getPasswordResetVerifiedUntil() == null) {
+            throw new BadRequestException("Veuillez d'abord verifier le code recu par email.");
+        }
+        if (LocalDateTime.now().isAfter(user.getPasswordResetVerifiedUntil())) {
+            throw new BadRequestException("La verification a expire. Demandez un nouveau code.");
+        }
+    }
+
+    private OtpResponse genericPasswordResetResponse(String email) {
+        return new OtpResponse(
+                email,
+                "Si un compte actif existe avec cet email, un code de reinitialisation a ete envoye.",
+                OTP_EXPIRATION_MINUTES
+        );
     }
 
     @Transactional
@@ -360,7 +452,12 @@ public class AuthService {
     public record LoginRequest(String email, String password) {}
     public record EmailVerificationRequest(String email, String otp) {}
     public record ResendVerificationRequest(String email) {}
+    public record ForgotPasswordRequest(String email) {}
+    public record VerifyPasswordResetOtpRequest(String email, String otp) {}
+    public record ResetPasswordRequest(String email, String newPassword, String confirmPassword) {}
     public record RegisterResponse(String email, String message, int expiresInMinutes) {}
+    public record OtpResponse(String email, String message, int expiresInMinutes) {}
+    public record MessageResponse(String message) {}
     public record AuthResponse(
             String accessToken,
             String refreshToken,

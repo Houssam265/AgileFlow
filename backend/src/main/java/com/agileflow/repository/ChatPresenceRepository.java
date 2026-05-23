@@ -12,12 +12,13 @@ import java.util.List;
 @Repository
 public interface ChatPresenceRepository extends JpaRepository<ChatPresence, Long> {
 
-    @Query("SELECT p.userId FROM ChatPresence p WHERE p.isOnline = true")
-    List<Long> findOnlineUserIds();
+    @Query("SELECT p.userId FROM ChatPresence p WHERE p.isOnline = true AND p.status = com.agileflow.entity.ChatPresence$VisibilityStatus.LIVE")
+    List<Long> findLiveUserIds();
 
     @Modifying
-    @Query(value = "INSERT INTO chat_presence (user_id, is_online, last_seen) " +
-                   "VALUES (:userId, :isOnline, :lastSeen) " +
-                   "ON DUPLICATE KEY UPDATE is_online = :isOnline, last_seen = :lastSeen", nativeQuery = true)
-    void upsertPresence(Long userId, boolean isOnline, LocalDateTime lastSeen);
+    @Query(value = "INSERT INTO chat_presence (user_id, is_online, last_seen, status) " +
+                   "VALUES (:userId, :isOnline, :lastSeen, :status) " +
+                   "ON DUPLICATE KEY UPDATE is_online = :isOnline, last_seen = :lastSeen, status = :status",
+            nativeQuery = true)
+    void upsertPresence(Long userId, boolean isOnline, LocalDateTime lastSeen, String status);
 }

@@ -10,51 +10,45 @@ import com.agileflow.entity.User;
 import com.agileflow.exception.BadRequestException;
 import com.agileflow.exception.ForbiddenOperationException;
 import com.agileflow.exception.ResourceNotFoundException;
+import com.agileflow.repository.ProjectMemberRepository;
 import com.agileflow.repository.ProjectRepository;
 import com.agileflow.repository.SprintRepository;
 import com.agileflow.repository.TaskRepository;
 import com.agileflow.repository.TeamRepository;
-import com.agileflow.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
-@RequiredArgsConstructor
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
-    private final UserRepository userRepository;
     private final SprintRepository sprintRepository;
     private final TaskRepository taskRepository;
     private final TeamRepository teamRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final ActivityLogger activityLogger;
+    private final ProjectAccessService projectAccessService;
 
-    private User currentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur courant introuvable"));
-    }
-
-    private boolean isAdmin(User user) {
-        return user.getRole() == User.Role.ROLE_ADMIN;
-    }
-
-    private boolean canManageProject(User actor, Project project) {
-        return isAdmin(actor)
-                || (actor.getRole() == User.Role.ROLE_MANAGER && project.getManager().getId().equals(actor.getId()));
-    }
-
-    private User validateManager(Long managerId) {
-        User manager = userRepository.findById(managerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Manager introuvable"));
-        if (manager.getRole() != User.Role.ROLE_ADMIN && manager.getRole() != User.Role.ROLE_MANAGER) {
-            throw new BadRequestException("Le manager doit avoir le role ADMIN ou MANAGER.");
-        }
-        return manager;
+    public ProjectService(
+            ProjectRepository projectRepository,
+            SprintRepository sprintRepository,
+            TaskRepository taskRepository,
+            TeamRepository teamRepository,
+            ProjectMemberRepository projectMemberRepository,
+            ActivityLogger activityLogger,
+            ProjectAccessService projectAccessService) {
+        this.projectRepository = projectRepository;
+        this.sprintRepository = sprintRepository;
+        this.taskRepository = taskRepository;
+        this.teamRepository = teamRepository;
+        this.projectMemberRepository = projectMemberRepository;
+        this.activityLogger = activityLogger;
+        this.projectAccessService = projectAccessService;
     }
 
     private void validateDates(CreateProjectRequest request) {
@@ -69,24 +63,22 @@ public class ProjectService {
         }
     }
 
-    private Team validateTeam(Long teamId, User actor) {
+    private Team resolveTeam(Long teamId) {
         if (teamId == null) {
             return null;
         }
-        Team team = teamRepository.findById(teamId)
+        return teamRepository.findById(teamId)
                 .orElseThrow(() -> new ResourceNotFoundException("Equipe introuvable"));
-        if (actor.getRole() == User.Role.ROLE_MANAGER && !team.getManager().getId().equals(actor.getId())) {
-            throw new ForbiddenOperationException("Un manager ne peut rattacher qu'une equipe qu'il gere.");
-        }
-        return team;
     }
 
-    ProjectDTO toProjectDTO(Project project) {
+    ProjectDTO toProjectDTO(Project project, User actor) {
         long sprintCount = sprintRepository.findByProjectId(project.getId()).size();
         long taskCount = sprintRepository.findByProjectId(project.getId()).stream()
                 .mapToLong(sprint -> taskRepository.findBySprintId(sprint.getId()).size())
                 .sum();
-        User manager = project.getManager();
+        User owner = project.getManager();
+        boolean isOwner = owner != null && actor != null && owner.getId().equals(actor.getId());
+        long memberCount = projectMemberRepository.countByProject_Id(project.getId());
         Team team = project.getTeam();
         return new ProjectDTO(
                 project.getId(),
@@ -95,48 +87,49 @@ public class ProjectService {
                 project.getDateDebut() != null ? project.getDateDebut().toString() : null,
                 project.getDateFin() != null ? project.getDateFin().toString() : null,
                 project.getStatut().name(),
-                manager != null ? manager.getId() : null,
-                manager != null ? (manager.getPrenom() + " " + manager.getNom()).trim() : null,
+                owner != null ? owner.getId() : null,
+                owner != null ? (owner.getPrenom() + " " + owner.getNom()).trim() : null,
                 team != null ? team.getId() : null,
                 team != null ? team.getName() : null,
                 sprintCount,
-                taskCount
+                taskCount,
+                isOwner,
+                memberCount
         );
     }
 
     @Transactional(readOnly = true)
     public List<ProjectDTO> listProjects(String q) {
-        User actor = currentUser();
-        String query = (q == null || q.isBlank()) ? null : q.trim();
-        List<Project> projects = isAdmin(actor) || actor.getRole() == User.Role.ROLE_DEVELOPER
-                ? projectRepository.search(query)
-                : projectRepository.findByManagerId(actor.getId()).stream()
+        User actor = projectAccessService.currentUser();
+        String query = (q == null || q.isBlank()) ? null : q.trim().toLowerCase();
+
+        List<Project> projects;
+        if (projectAccessService.isPlatformAdmin(actor)) {
+            projects = projectRepository.search(query);
+        } else {
+            Set<Project> accessible = new LinkedHashSet<>(projectRepository.findAccessibleByUserId(actor.getId()));
+            projects = accessible.stream()
                     .filter(project -> query == null
-                            || project.getNom().toLowerCase().contains(query.toLowerCase())
-                            || (project.getDescription() != null && project.getDescription().toLowerCase().contains(query.toLowerCase())))
+                            || project.getNom().toLowerCase().contains(query)
+                            || (project.getDescription() != null && project.getDescription().toLowerCase().contains(query)))
                     .toList();
-        return projects.stream().map(this::toProjectDTO).toList();
+        }
+
+        return projects.stream().map(project -> toProjectDTO(project, actor)).toList();
     }
 
     @Transactional(readOnly = true)
     public ProjectDTO getProjectById(Long id) {
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Projet introuvable"));
-        return toProjectDTO(project);
+        Project project = projectAccessService.getProjectOrThrow(id);
+        User actor = projectAccessService.currentUser();
+        projectAccessService.assertProjectAccess(actor, project);
+        return toProjectDTO(project, actor);
     }
 
     @Transactional
     public ProjectDTO createProject(CreateProjectRequest request) {
-        User actor = currentUser();
-        if (!isAdmin(actor) && actor.getRole() != User.Role.ROLE_MANAGER) {
-            throw new ForbiddenOperationException("Seuls les administrateurs et managers peuvent creer un projet.");
-        }
+        User actor = projectAccessService.currentUser();
         validateDates(request);
-        User manager = validateManager(request.managerId());
-        if (actor.getRole() == User.Role.ROLE_MANAGER && !actor.getId().equals(manager.getId())) {
-            throw new ForbiddenOperationException("Un manager ne peut creer qu'un projet dont il est responsable.");
-        }
-        Team team = validateTeam(request.teamId(), actor);
 
         Project project = Project.builder()
                 .nom(request.name())
@@ -144,49 +137,37 @@ public class ProjectService {
                 .dateDebut(request.startDate())
                 .dateFin(request.endDate())
                 .statut(request.status())
-                .manager(manager)
-                .team(team)
+                .manager(actor)
+                .team(resolveTeam(request.teamId()))
                 .build();
         projectRepository.save(project);
         activityLogger.log(actor, ActivityLog.Action.PROJECT_CREATED, "Projet cree: " + project.getNom(), project, null, null);
-        return toProjectDTO(project);
+        return toProjectDTO(project, actor);
     }
 
     @Transactional
     public ProjectDTO updateProject(Long id, UpdateProjectRequest request) {
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Projet introuvable"));
-        User actor = currentUser();
-        if (!canManageProject(actor, project)) {
-            throw new ForbiddenOperationException("Vous ne pouvez pas modifier ce projet.");
-        }
+        Project project = projectAccessService.getProjectOrThrow(id);
+        User actor = projectAccessService.currentUser();
+        projectAccessService.assertCanManageProject(actor, project);
         validateDates(request);
-        User manager = validateManager(request.managerId());
-        if (actor.getRole() == User.Role.ROLE_MANAGER && !actor.getId().equals(manager.getId())) {
-            throw new ForbiddenOperationException("Un manager ne peut pas transferer un projet a un autre responsable.");
-        }
-        Team team = validateTeam(request.teamId(), actor);
 
         project.setNom(request.name());
         project.setDescription(request.description());
         project.setDateDebut(request.startDate());
         project.setDateFin(request.endDate());
         project.setStatut(request.status());
-        project.setManager(manager);
-        project.setTeam(team);
+        project.setTeam(resolveTeam(request.teamId()));
         projectRepository.save(project);
         activityLogger.log(actor, ActivityLog.Action.PROJECT_UPDATED, "Projet mis a jour: " + project.getNom(), project, null, null);
-        return toProjectDTO(project);
+        return toProjectDTO(project, actor);
     }
 
     @Transactional
     public void deleteProject(Long id) {
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Projet introuvable"));
-        User actor = currentUser();
-        if (!canManageProject(actor, project)) {
-            throw new ForbiddenOperationException("Vous ne pouvez pas supprimer ce projet.");
-        }
+        Project project = projectAccessService.getProjectOrThrow(id);
+        User actor = projectAccessService.currentUser();
+        projectAccessService.assertCanManageProject(actor, project);
         if (!sprintRepository.findByProjectId(id).isEmpty()) {
             throw new BadRequestException("Impossible de supprimer un projet qui contient deja des sprints.");
         }

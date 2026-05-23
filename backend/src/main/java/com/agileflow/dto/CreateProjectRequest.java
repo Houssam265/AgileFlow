@@ -12,6 +12,6 @@ public record CreateProjectRequest(
         @NotNull LocalDate startDate,
         LocalDate endDate,
         @NotNull Project.Statut status,
-        @NotNull Long managerId,
+        Long managerId,
         Long teamId
 ) {}

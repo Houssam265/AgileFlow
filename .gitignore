@@ -82,3 +82,5 @@ HELP.md
 
 ### VS Code ###
 .vscode/
+
+echo "backend/src/main/resources/application.properties" >> .gitignore

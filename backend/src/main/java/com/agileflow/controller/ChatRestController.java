@@ -1,14 +1,19 @@
 package com.agileflow.controller;
 
 import com.agileflow.dto.ChatMessageDTO;
+import com.agileflow.dto.ChatPresenceDTO;
+import com.agileflow.dto.UpdateVisibilityRequest;
+import com.agileflow.entity.ChatPresence;
 import com.agileflow.entity.ChatMessage;
 import com.agileflow.entity.User;
 import com.agileflow.exception.ResourceNotFoundException;
 import com.agileflow.repository.UserRepository;
+import com.agileflow.service.ChatContactService;
 import com.agileflow.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +27,9 @@ import java.util.List;
 public class ChatRestController {
 
     private final ChatService chatService;
+    private final ChatContactService chatContactService;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @GetMapping("/messages")
     @PreAuthorize("isAuthenticated()")
@@ -40,13 +47,31 @@ public class ChatRestController {
         }
 
         User currentUser = getCurrentUser();
+        if (type == ChatMessage.ChannelType.PRIVATE) {
+            if (recipientId == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "recipientId requis pour un canal privé");
+            }
+            chatContactService.assertCanSendPrivateMessage(currentUser.getId(), recipientId);
+        }
         return chatService.getMessagesByChannel(type, projectId, recipientId, currentUser.getId(), page);
     }
 
     @GetMapping("/presence")
     @PreAuthorize("isAuthenticated()")
-    public List<Long> getOnlineUsers() {
-        return chatService.getOnlineUsers();
+    public List<ChatPresenceDTO> getPresenceSnapshot() {
+        return chatService.getPresenceSnapshot();
+    }
+
+    @PutMapping("/presence/me")
+    @PreAuthorize("isAuthenticated()")
+    public ChatPresenceDTO updateMyVisibility(@RequestBody UpdateVisibilityRequest request) {
+        if (request.status() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Statut de visibilite requis");
+        }
+        User currentUser = getCurrentUser();
+        chatService.updatePresence(currentUser.getId(), true, request.status());
+        chatService.broadcastPresenceSnapshot(messagingTemplate);
+        return chatService.getPresenceForUser(currentUser.getId());
     }
 
     private User getCurrentUser() {

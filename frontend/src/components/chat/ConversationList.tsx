@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
-import { List, ListItem, ListItemAvatar, Avatar, ListItemText, ListItemButton, Badge, Typography, Divider, CircularProgress, Box } from '@mui/material';
-import { Public, Business, Person } from '@mui/icons-material';
+import { List, ListItem, ListItemAvatar, Avatar, ListItemText, ListItemButton, Badge, Typography, Divider, Box } from '@mui/material';
+import { Business, Person } from '@mui/icons-material';
 import PresenceIndicator from './PresenceIndicator';
-import { ChannelType, UserListItem } from '../../types';
-import { fetchUsers } from '../../api/usersApi';
+import { ChannelType } from '../../types';
+import type { PresenceDisplay } from '../../store/presenceStore';
+import ContactInviteSection from './ContactInviteSection';
 
 export interface Conversation {
   id: string | number;
   name: string;
   type: ChannelType;
   unreadCount: number;
-  isOnline?: boolean;
+  presence?: PresenceDisplay;
   avatar?: string | null;
   recipientId?: number;
   projectId?: number;
@@ -20,55 +20,31 @@ interface ConversationListProps {
   conversations: Conversation[];
   activeConversationId: string | number;
   onSelectConversation: (conversation: Conversation) => void;
+  onContactsChanged: () => void;
 }
 
-const ConversationList = ({ conversations, activeConversationId, onSelectConversation }: ConversationListProps) => {
-  const [allUsers, setAllUsers] = useState<UserListItem[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-
-  useEffect(() => {
-    const loadUsers = async () => {
-      setIsLoadingUsers(true);
-      try {
-        const users = await fetchUsers();
-        setAllUsers(users);
-      } catch (error) {
-        console.error('Failed to fetch users in ConversationList:', error);
-      } finally {
-        setIsLoadingUsers(false);
-      }
-    };
-    loadUsers();
-  }, []);
-
+const ConversationList = ({
+  conversations,
+  activeConversationId,
+  onSelectConversation,
+  onContactsChanged,
+}: ConversationListProps) => {
   const getIcon = (type: ChannelType) => {
     switch (type) {
-      case 'GLOBAL': return <Public />;
       case 'PROJECT': return <Business />;
       case 'PRIVATE': return <Person />;
+      default: return <Business />;
     }
   };
 
-  const getUserName = (conv: Conversation) => {
-    if (conv.type !== 'PRIVATE' || !conv.recipientId) return conv.name;
-    const user = allUsers.find(u => u.id === conv.recipientId);
-    if (user) return `${user.firstName} ${user.lastName}`;
-    return conv.name;
-  };
-
-  const getUserInitial = (conv: Conversation) => {
-    if (conv.type !== 'PRIVATE' || !conv.recipientId) return conv.name.charAt(0);
-    const user = allUsers.find(u => u.id === conv.recipientId);
-    if (user) return user.firstName.charAt(0);
-    return conv.name.charAt(0);
-  };
+  const privateConversations = conversations.filter((c) => c.type === 'PRIVATE');
 
   return (
     <List sx={{ width: '100%', bgcolor: 'background.paper' }}>
       <Typography variant="overline" sx={{ px: 2, color: 'text.secondary', fontWeight: 'bold' }}>
         Canaux
       </Typography>
-      {conversations.filter(c => c.type !== 'PRIVATE').map((conv) => (
+      {conversations.filter((c) => c.type !== 'PRIVATE').map((conv) => (
         <ListItem key={conv.id} disablePadding>
           <ListItemButton
             selected={activeConversationId === conv.id}
@@ -77,7 +53,7 @@ const ConversationList = ({ conversations, activeConversationId, onSelectConvers
               '&.Mui-selected': {
                 borderRight: '3px solid',
                 borderColor: 'primary.main',
-              }
+              },
             }}
           >
             <ListItemAvatar>
@@ -85,9 +61,9 @@ const ConversationList = ({ conversations, activeConversationId, onSelectConvers
                 {getIcon(conv.type)}
               </Avatar>
             </ListItemAvatar>
-            <ListItemText 
-              primary={conv.name} 
-              secondary={conv.type === 'GLOBAL' ? 'Chat public' : 'Projet'}
+            <ListItemText
+              primary={conv.name}
+              secondary="Projet"
             />
             <Badge badgeContent={conv.unreadCount} color="error" />
           </ListItemButton>
@@ -95,17 +71,23 @@ const ConversationList = ({ conversations, activeConversationId, onSelectConvers
       ))}
 
       <Divider sx={{ my: 1 }} />
-      
+
+      <ContactInviteSection onContactsChanged={onContactsChanged} />
+
+      <Divider sx={{ my: 1 }} />
+
       <Typography variant="overline" sx={{ px: 2, color: 'text.secondary', fontWeight: 'bold' }}>
         Messages Directs
       </Typography>
-      
-      {isLoadingUsers && allUsers.length === 0 ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-          <CircularProgress size={24} />
+
+      {privateConversations.length === 0 ? (
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            Aucun contact pour le moment. Recherchez un utilisateur et envoyez une invitation.
+          </Typography>
         </Box>
       ) : (
-        conversations.filter(c => c.type === 'PRIVATE').map((conv) => (
+        privateConversations.map((conv) => (
           <ListItem key={conv.id} disablePadding>
             <ListItemButton
               selected={activeConversationId === conv.id}
@@ -114,17 +96,17 @@ const ConversationList = ({ conversations, activeConversationId, onSelectConvers
                 '&.Mui-selected': {
                   borderRight: '3px solid',
                   borderColor: 'primary.main',
-                }
+                },
               }}
             >
               <ListItemAvatar>
-                <PresenceIndicator isOnline={!!conv.isOnline} size="small">
+                <PresenceIndicator presence={conv.presence ?? 'OFFLINE'} size="small">
                   <Avatar src={conv.avatar || undefined}>
-                    {getUserInitial(conv)}
+                    {conv.name.charAt(0)}
                   </Avatar>
                 </PresenceIndicator>
               </ListItemAvatar>
-              <ListItemText primary={getUserName(conv)} />
+              <ListItemText primary={conv.name} />
               <Badge badgeContent={conv.unreadCount} color="error" />
             </ListItemButton>
           </ListItem>

@@ -1,56 +1,53 @@
-import { Badge, styled } from '@mui/material';
+import { Box } from '@mui/material';
+import type { PresenceDisplay } from '../../store/presenceStore';
 
 interface PresenceIndicatorProps {
-  isOnline: boolean;
-  children: React.ReactNode;
+  presence: PresenceDisplay;
+  children: React.ReactElement;
   size?: 'small' | 'medium';
 }
 
-const StyledBadge = styled(Badge, {
-  shouldForwardProp: (prop) => prop !== 'size' && prop !== 'isOnline',
-})<{ isOnline: boolean; size: 'small' | 'medium' }>(({ theme, isOnline, size }) => ({
-  '& .MuiBadge-badge': {
-    backgroundColor: isOnline ? '#44b700' : '#bdbdbd',
-    color: isOnline ? '#44b700' : '#bdbdbd',
-    boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
-    width: size === 'small' ? 8 : 12,
-    height: size === 'small' ? 8 : 12,
-    borderRadius: '50%',
-    '&::after': isOnline ? {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      borderRadius: '50%',
-      animation: 'ripple 1.2s infinite ease-in-out',
-      border: '1px solid currentColor',
-      content: '""',
-    } : {},
-  },
-  '@keyframes ripple': {
-    '0%': {
-      transform: 'scale(.8)',
-      opacity: 1,
-    },
-    '100%': {
-      transform: 'scale(2.4)',
-      opacity: 0,
-    },
-  },
-}));
+const COLORS: Record<PresenceDisplay, string> = {
+  LIVE: '#44b700',
+  BUSY: '#f44336',
+  ABSENT: '#ff9800',
+  OFFLINE: '#bdbdbd',
+};
 
-const PresenceIndicator = ({ isOnline, children, size = 'medium' }: PresenceIndicatorProps) => {
+const PresenceIndicator = ({ presence, children, size = 'medium' }: PresenceIndicatorProps) => {
+  const dotSize = size === 'small' ? 10 : 12;
+
   return (
-    <StyledBadge
-      overlap="circular"
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      variant="dot"
-      isOnline={isOnline}
-      size={size}
-    >
+    <Box sx={{ position: 'relative', display: 'inline-flex' }}>
       {children}
-    </StyledBadge>
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: 0,
+          right: 0,
+          width: dotSize,
+          height: dotSize,
+          borderRadius: '50%',
+          bgcolor: COLORS[presence],
+          border: '2px solid white',
+          boxSizing: 'border-box',
+          ...(presence === 'LIVE' && {
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              inset: -2,
+              borderRadius: '50%',
+              border: `1px solid ${COLORS.LIVE}`,
+              animation: 'presence-pulse 1.2s infinite ease-in-out',
+            },
+            '@keyframes presence-pulse': {
+              '0%': { transform: 'scale(0.8)', opacity: 1 },
+              '100%': { transform: 'scale(2)', opacity: 0 },
+            },
+          }),
+        }}
+      />
+    </Box>
   );
 };
 

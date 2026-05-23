@@ -23,6 +23,8 @@ public record CreateUserStoryRequest(
         Integer storyPoints,
 
         @Size(max = 5000, message = "Les criteres d'acceptation ne doivent pas depasser 5000 caracteres.")
-        String acceptanceCriteria
+        String acceptanceCriteria,
+
+        Long epicId
 ) {
 }

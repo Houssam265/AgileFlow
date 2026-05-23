@@ -25,4 +25,13 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     long countByStatut(Project.Statut statut);
 
     long countByManager_IdAndStatut(Long managerId, Project.Statut statut);
+
+    @Query("""
+            SELECT DISTINCT p FROM Project p
+            LEFT JOIN FETCH p.manager
+            LEFT JOIN ProjectMember pm ON pm.project.id = p.id AND pm.user.id = :userId
+            WHERE p.manager.id = :userId OR pm.user.id = :userId
+            ORDER BY p.dateDebut DESC, p.id DESC
+            """)
+    List<Project> findAccessibleByUserId(@Param("userId") Long userId);
 }

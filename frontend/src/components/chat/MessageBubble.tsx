@@ -1,14 +1,15 @@
 import { Box, Typography, Avatar, Paper } from '@mui/material';
 import { ChatMessageDTO } from '../../types';
 import PresenceIndicator from './PresenceIndicator';
+import type { PresenceDisplay } from '../../store/presenceStore';
 
 interface MessageBubbleProps {
   message: ChatMessageDTO;
   isOwnMessage: boolean;
-  isOnline: boolean;
+  presence: PresenceDisplay;
 }
 
-const MessageBubble = ({ message, isOwnMessage, isOnline }: MessageBubbleProps) => {
+const MessageBubble = ({ message, isOwnMessage, presence }: MessageBubbleProps) => {
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -43,7 +44,7 @@ const MessageBubble = ({ message, isOwnMessage, isOnline }: MessageBubbleProps) 
       }}
     >
       {!isOwnMessage && (
-        <PresenceIndicator isOnline={isOnline} size="small">
+        <PresenceIndicator presence={presence} size="small">
           <Avatar
             src={message.senderAvatar || undefined}
             sx={{ width: 32, height: 32, fontSize: '0.875rem' }}

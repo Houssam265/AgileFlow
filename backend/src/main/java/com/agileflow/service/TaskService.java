@@ -40,6 +40,7 @@ public class TaskService {
     private final UserStoryRepository userStoryRepository;
     private final ActivityLogger activityLogger;
     private final EmailNotificationService emailNotificationService;
+    private final ProjectAccessService projectAccessService;
 
     private User currentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -52,16 +53,11 @@ public class TaskService {
     }
 
     private boolean canViewProject(User actor, Project project) {
-        return isAdmin(actor)
-                || actor.getRole() == User.Role.ROLE_DEVELOPER
-                || (actor.getRole() == User.Role.ROLE_MANAGER && project.getManager() != null
-                && project.getManager().getId().equals(actor.getId()));
+        return projectAccessService.hasProjectAccess(actor, project);
     }
 
     private boolean canManageProject(User actor, Project project) {
-        return isAdmin(actor)
-                || (actor.getRole() == User.Role.ROLE_MANAGER && project.getManager() != null
-                && project.getManager().getId().equals(actor.getId()));
+        return projectAccessService.canManageProject(actor, project);
     }
 
     private Task getTaskOrThrow(Long taskId) {

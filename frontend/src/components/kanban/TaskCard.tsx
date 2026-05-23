@@ -6,6 +6,7 @@ import type { TaskItem } from '../../types';
 interface TaskCardProps {
   task: TaskItem;
   onClick: (task: TaskItem) => void;
+  highlighted?: boolean;
 }
 
 const PRIORITIES = {
@@ -15,7 +16,7 @@ const PRIORITIES = {
   CRITICAL: { label: 'Critique', color: 'error' },
 } as const;
 
-const TaskCard = ({ task, onClick }: TaskCardProps) => {
+const TaskCard = ({ task, onClick, highlighted }: TaskCardProps) => {
   const theme = useTheme();
   const isCompleted = task.statut === 'DONE';
   const showUrgent = task.isUrgent && !isCompleted;
@@ -43,7 +44,10 @@ const TaskCard = ({ task, onClick }: TaskCardProps) => {
         opacity: isDragging ? 0.5 : 1,
         position: 'relative',
         overflow: 'visible',
-        border: showUrgent ? `2px solid ${theme.palette.error.main}` : '1px solid transparent',
+        border: highlighted
+          ? `2px solid ${theme.palette.primary.main}`
+          : showUrgent ? `2px solid ${theme.palette.error.main}` : '1px solid transparent',
+        bgcolor: highlighted ? 'primary.50' : undefined,
         borderLeft: `4px solid ${showUrgent ? theme.palette.error.main : theme.palette[priorityConfig.color].main}`,
         boxShadow: showUrgent ? `0 0 0 3px ${theme.palette.error.light}22` : undefined,
         '&:hover': {

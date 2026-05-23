@@ -10,7 +10,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { Assignment, Group, Timeline } from '@mui/icons-material';
+import { Assignment, Group, ManageAccounts, Timeline } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { fetchDashboardStats } from '../api/dashboardApi';
 import { fetchProjects } from '../api/projectsApi';
@@ -99,14 +99,16 @@ const DashboardPage = () => {
           </Typography>
           <Button sx={{ mt: 2 }} onClick={() => navigate('/projects')}>Ouvrir</Button>
         </Paper>
-        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', flex: 1 }}>
-          <Group color="primary" />
-          <Typography variant="h6" fontWeight={700} sx={{ mt: 1 }}>Utilisateurs</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Gere les profils, roles et acces des utilisateurs.
-          </Typography>
-          <Button sx={{ mt: 2 }} onClick={() => navigate('/users')}>Ouvrir</Button>
-        </Paper>
+        {user?.role === 'ROLE_ADMIN' && (
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', flex: 1 }}>
+            <ManageAccounts color="primary" />
+            <Typography variant="h6" fontWeight={700} sx={{ mt: 1 }}>Utilisateurs</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Gere les profils, roles et acces des utilisateurs.
+            </Typography>
+            <Button sx={{ mt: 2 }} onClick={() => navigate('/users')}>Ouvrir</Button>
+          </Paper>
+        )}
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', flex: 1 }}>
           <Group color="primary" />
           <Typography variant="h6" fontWeight={700} sx={{ mt: 1 }}>Equipes</Typography>

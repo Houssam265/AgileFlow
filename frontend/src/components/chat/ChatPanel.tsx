@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Drawer,
   Box,
@@ -12,6 +12,9 @@ import {
   Stack,
   useTheme,
   useMediaQuery,
+  Tooltip,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import { Send, Close, ArrowBack, Forum } from '@mui/icons-material';
 import { useChat, useChatStore } from '../../hooks/useChat';
@@ -19,10 +22,10 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 import { useAuthStore } from '../../store/authStore';
 import MessageBubble from './MessageBubble';
 import ConversationList, { Conversation } from './ConversationList';
-import { ChannelType, ProjectListItem, UserListItem } from '../../types';
+import { ChannelType, ProjectListItem } from '../../types';
 import { fetchProjects } from '../../api/projectsApi';
-import { fetchUsers } from '../../api/usersApi';
-import { Tooltip } from '@mui/material';
+import { fetchChatContacts, type ChatContact } from '../../api/chatContactsApi';
+import { resolvePresenceDisplay, usePresenceStore } from '../../store/presenceStore';
 
 interface ChatPanelProps {
   open: boolean;
@@ -35,47 +38,71 @@ const ChatPanel = ({ open, onClose }: ChatPanelProps) => {
   const { user } = useAuthStore();
   const { connectionState } = useWebSocket();
   const unreadCounts = useChatStore((state) => state.unreadCounts);
-  
+  const incomingAlert = useChatStore((state) => state.incomingAlert);
+  const setIncomingAlert = useChatStore((state) => state.setIncomingAlert);
+  const getPresence = usePresenceStore((state) => state.getPresence);
+
   const [activeChannel, setActiveChannel] = useState<{
     type: ChannelType;
     id: string | number;
     name: string;
     projectId?: number;
     recipientId?: number;
-  }>({ type: 'GLOBAL', id: 'global', name: 'Global' });
+  } | null>(null);
 
   const [view, setView] = useState<'list' | 'conversation'>('list');
   const [messageInput, setMessageInput] = useState('');
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
-  const [users, setUsers] = useState<UserListItem[]>([]);
-  
+  const [contacts, setContacts] = useState<ChatContact[]>([]);
+
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const projectNames = useMemo(
+    () => Object.fromEntries(projects.map((p) => [p.id, p.name])),
+    [projects]
+  );
+
+  const contactNames = useMemo(
+    () => Object.fromEntries(contacts.map((c) => [c.userId, `${c.firstName} ${c.lastName}`])),
+    [contacts]
+  );
 
   const {
     messages,
-    onlineUsers,
     sendMessage,
     loadMoreMessages,
     isLoadingHistory,
     hasMore,
   } = useChat({
-    channelType: activeChannel.type,
-    projectId: activeChannel.projectId,
-    recipientId: activeChannel.recipientId,
+    channelType: activeChannel?.type,
+    projectId: activeChannel?.projectId,
+    recipientId: activeChannel?.recipientId,
+    projectNames,
+    contactNames,
   });
+
+  const loadContacts = useCallback(async () => {
+    try {
+      const contactRows = await fetchChatContacts();
+      setContacts(contactRows);
+    } catch (error) {
+      console.error('Failed to load chat contacts:', error);
+      setContacts([]);
+    }
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [projData, usersData] = await Promise.all([fetchProjects(), fetchUsers()]);
+        const projData = await fetchProjects();
         setProjects(projData);
-        setUsers(usersData);
+        await loadContacts();
       } catch (error) {
         console.error('Failed to load chat side data:', error);
       }
     };
     if (open) loadData();
-  }, [open]);
+  }, [open, loadContacts]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -84,7 +111,7 @@ const ChatPanel = ({ open, onClose }: ChatPanelProps) => {
   }, [messages]);
 
   const handleSend = () => {
-    if (!messageInput.trim()) return;
+    if (!messageInput.trim() || !activeChannel) return;
     sendMessage(messageInput);
     setMessageInput('');
   };
@@ -96,24 +123,23 @@ const ChatPanel = ({ open, onClose }: ChatPanelProps) => {
     }
   };
 
-  const conversations = [
-    { id: 'global', name: 'Global', type: 'GLOBAL' as ChannelType, unreadCount: unreadCounts['global'] || 0 },
-    ...projects.map(p => ({ 
-      id: `project-${p.id}`, 
-      name: p.name, 
-      type: 'PROJECT' as ChannelType, 
-      unreadCount: unreadCounts[`project-${p.id}`] || 0, 
-      projectId: p.id 
+  const conversations: Conversation[] = [
+    ...projects.map((p) => ({
+      id: `project-${p.id}`,
+      name: p.name,
+      type: 'PROJECT' as ChannelType,
+      unreadCount: unreadCounts[`project-${p.id}`] || 0,
+      projectId: p.id,
     })),
-    ...users.filter(u => u.id !== user?.id).map(u => ({ 
-      id: `private-${u.id}`, 
-      name: `${u.firstName} ${u.lastName}`, 
-      type: 'PRIVATE' as ChannelType, 
-      unreadCount: unreadCounts[`private-${u.id}`] || 0, 
-      recipientId: u.id,
-      isOnline: onlineUsers.includes(u.id),
-      avatar: null
-    }))
+    ...contacts.map((c) => ({
+      id: `private-${c.userId}`,
+      name: `${c.firstName} ${c.lastName}`,
+      type: 'PRIVATE' as ChannelType,
+      unreadCount: unreadCounts[`private-${c.userId}`] || 0,
+      recipientId: c.userId,
+      presence: resolvePresenceDisplay(getPresence(c.userId)),
+      avatar: null,
+    })),
   ];
 
   const handleSelectConversation = (conv: Conversation) => {
@@ -124,8 +150,21 @@ const ChatPanel = ({ open, onClose }: ChatPanelProps) => {
       projectId: conv.projectId,
       recipientId: conv.recipientId,
     });
-    // Forcer le passage à la vue conversation
     setView('conversation');
+    setIncomingAlert(null);
+  };
+
+  const handleContactsChanged = async () => {
+    await loadContacts();
+  };
+
+  const handleOpenAlertConversation = () => {
+    if (!incomingAlert) return;
+    const conv = conversations.find((c) => String(c.id) === incomingAlert.channelId);
+    if (conv) {
+      handleSelectConversation(conv);
+    }
+    setIncomingAlert(null);
   };
 
   return (
@@ -137,7 +176,7 @@ const ChatPanel = ({ open, onClose }: ChatPanelProps) => {
       sx={{
         width: open ? 350 : 0,
         flexShrink: 0,
-        zIndex: (theme) => isDesktop ? theme.zIndex.drawer : theme.zIndex.modal,
+        zIndex: (t) => (isDesktop ? t.zIndex.drawer : t.zIndex.modal),
         visibility: open ? 'visible' : 'hidden',
         transition: theme.transitions.create(['width', 'visibility'], {
           easing: theme.transitions.easing.sharp,
@@ -148,14 +187,13 @@ const ChatPanel = ({ open, onClose }: ChatPanelProps) => {
           boxSizing: 'border-box',
           display: 'flex',
           flexDirection: 'column',
-          mt: isDesktop ? '64px' : 0, // Height of the AppBar
+          mt: isDesktop ? '64px' : 0,
           height: isDesktop ? 'calc(100% - 64px)' : '100%',
           borderTop: isDesktop ? '1px solid' : 'none',
           borderColor: 'divider',
         },
       }}
     >
-      {/* Header */}
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: 'primary.main', color: 'white' }}>
         <Stack direction="row" spacing={1} alignItems="center">
           {view === 'conversation' ? (
@@ -167,12 +205,12 @@ const ChatPanel = ({ open, onClose }: ChatPanelProps) => {
           ) : (
             <Forum sx={{ mr: 1 }} />
           )}
-          <Box 
+          <Box
             onClick={() => view === 'conversation' && setView('list')}
             sx={{ cursor: view === 'conversation' ? 'pointer' : 'default' }}
           >
             <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
-              {view === 'list' ? 'Chat Collaboratif' : activeChannel.name}
+              {view === 'list' ? 'Chat Collaboratif' : activeChannel?.name ?? 'Chat'}
             </Typography>
             {view === 'conversation' && (
               <Typography variant="caption" sx={{ display: 'block', opacity: 0.8, mt: -0.5 }}>
@@ -181,26 +219,44 @@ const ChatPanel = ({ open, onClose }: ChatPanelProps) => {
             )}
           </Box>
         </Stack>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <IconButton size="small" onClick={onClose} sx={{ color: 'white' }}>
-            <Close />
-          </IconButton>
-        </Stack>
+        <IconButton size="small" onClick={onClose} sx={{ color: 'white' }}>
+          <Close />
+        </IconButton>
       </Box>
 
       <Divider />
 
-      {/* Body */}
+      <Snackbar
+        open={Boolean(open && view === 'list' && incomingAlert)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={{ top: 72, width: '100%', maxWidth: 330, left: 'auto', right: 10, transform: 'none' }}
+      >
+        <Alert
+          severity="info"
+          variant="filled"
+          onClose={() => setIncomingAlert(null)}
+          onClick={handleOpenAlertConversation}
+          sx={{ width: '100%', cursor: 'pointer' }}
+        >
+          <strong>{incomingAlert?.senderName}</strong> — {incomingAlert?.channelName}
+          <br />
+          <Typography variant="caption" component="span">
+            {incomingAlert?.preview}
+          </Typography>
+        </Alert>
+      </Snackbar>
+
       <Box sx={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {view === 'list' ? (
           <Box sx={{ overflowY: 'auto', flexGrow: 1 }}>
             <ConversationList
               conversations={conversations}
-              activeConversationId={activeChannel.id}
+              activeConversationId={activeChannel?.id ?? ''}
               onSelectConversation={handleSelectConversation}
+              onContactsChanged={handleContactsChanged}
             />
           </Box>
-        ) : (
+        ) : activeChannel ? (
           <Box key={activeChannel.id} sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <Box
               ref={scrollRef}
@@ -210,13 +266,13 @@ const ChatPanel = ({ open, onClose }: ChatPanelProps) => {
                 p: 2,
                 display: 'flex',
                 flexDirection: 'column',
-                bgcolor: '#f5f7fb'
+                bgcolor: '#f5f7fb',
               }}
             >
               {hasMore && (
-                <Button 
-                  size="small" 
-                  onClick={loadMoreMessages} 
+                <Button
+                  size="small"
+                  onClick={loadMoreMessages}
                   disabled={isLoadingHistory}
                   sx={{ mb: 2, alignSelf: 'center' }}
                 >
@@ -228,12 +284,11 @@ const ChatPanel = ({ open, onClose }: ChatPanelProps) => {
                   key={msg.id || `${msg.senderId}-${msg.createdAt}`}
                   message={msg}
                   isOwnMessage={msg.senderId === user?.id}
-                  isOnline={onlineUsers.includes(msg.senderId)}
+                  presence={resolvePresenceDisplay(getPresence(msg.senderId))}
                 />
               ))}
             </Box>
 
-            {/* Footer */}
             <Paper elevation={3} sx={{ p: 2 }}>
               <Stack direction="row" spacing={1} alignItems="flex-end">
                 <TextField
@@ -248,15 +303,21 @@ const ChatPanel = ({ open, onClose }: ChatPanelProps) => {
                   size="small"
                   helperText={`${messageInput.length}/1000`}
                 />
-                <IconButton 
-                  color="primary" 
-                  onClick={handleSend} 
+                <IconButton
+                  color="primary"
+                  onClick={handleSend}
                   disabled={!messageInput.trim() || connectionState !== 'CONNECTED'}
                 >
                   <Send />
                 </IconButton>
               </Stack>
             </Paper>
+          </Box>
+        ) : (
+          <Box sx={{ p: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Selectionnez une conversation.
+            </Typography>
           </Box>
         )}
       </Box>

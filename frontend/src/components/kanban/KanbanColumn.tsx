@@ -8,9 +8,10 @@ interface KanbanColumnProps {
   title: string;
   tasks: TaskItem[];
   onTaskClick: (task: TaskItem) => void;
+  highlightStoryId?: number | null;
 }
 
-const KanbanColumn = ({ id, title, tasks, onTaskClick }: KanbanColumnProps) => {
+const KanbanColumn = ({ id, title, tasks, onTaskClick, highlightStoryId }: KanbanColumnProps) => {
   const { setNodeRef, isOver } = useDroppable({
     id,
     data: { type: 'Column', statut: id },
@@ -46,7 +47,12 @@ const KanbanColumn = ({ id, title, tasks, onTaskClick }: KanbanColumnProps) => {
         }}
       >
         {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} onClick={onTaskClick} />
+          <TaskCard
+            key={task.id}
+            task={task}
+            onClick={onTaskClick}
+            highlighted={highlightStoryId != null && task.storyId === highlightStoryId}
+          />
         ))}
       </Box>
     </Box>
