@@ -5,16 +5,6 @@ import { AuthProvider } from './context/AuthContext';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
 import { ToastProvider } from './components/notifications/Toast';
 import App from './App';
-import { Buffer } from 'buffer';
-
-// Polyfill for sockjs-client and global objects
-if (typeof window !== 'undefined') {
-  (window as any).global = window;
-  (window as any).Buffer = Buffer;
-  if (typeof (window as any).process === 'undefined') {
-    (window as any).process = { env: {} };
-  }
-}
 
 const theme = createTheme({
   palette: {
