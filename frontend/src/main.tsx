@@ -6,6 +6,17 @@ import AppErrorBoundary from './components/common/AppErrorBoundary';
 import { ToastProvider } from './components/notifications/Toast';
 import App from './App';
 
+// Polyfill for sockjs-client and global objects
+if (typeof window !== 'undefined') {
+  (window as any).global = window;
+  if (typeof (window as any).Buffer === 'undefined') {
+    (window as any).Buffer = {};
+  }
+  if (typeof (window as any).process === 'undefined') {
+    (window as any).process = { env: {} };
+  }
+}
+
 const theme = createTheme({
   palette: {
     mode: 'light',
