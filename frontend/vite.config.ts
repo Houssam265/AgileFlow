@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   resolve: {
+    alias: {},
     dedupe: [
       'react',
       'react-dom',
@@ -27,6 +28,7 @@ export default defineConfig({
       '@mui/material/Tooltip',
       '@mui/system',
       '@mui/styled-engine',
+      'sockjs-client'
     ],
   },
   define: {
