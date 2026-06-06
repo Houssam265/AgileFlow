@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { useAuthStore } from '../store/authStore';
 
 export type WebSocketState = 'CONNECTING' | 'CONNECTED' | 'DISCONNECTED';
@@ -25,8 +24,10 @@ export const useWebSocket = (): UseWebSocketReturn => {
     isConnecting.current = true;
     setConnectionState('CONNECTING');
 
+    // Use native WebSocket instead of SockJS for better compatibility
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
     const client = new Client({
-      webSocketFactory: () => new SockJS(import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws'),
+      webSocketFactory: () => new WebSocket(wsUrl),
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },

@@ -5,7 +5,15 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {},
+    alias: {
+      https: 'agent-base',
+      http: 'agent-base',
+      zlib: 'browserify-zlib',
+      util: 'util',
+      stream: 'stream-browserify',
+      assert: 'assert',
+      buffer: 'buffer',
+    },
     dedupe: [
       'react',
       'react-dom',
@@ -28,11 +36,17 @@ export default defineConfig({
       '@mui/material/Tooltip',
       '@mui/system',
       '@mui/styled-engine',
-      'sockjs-client'
+      'sockjs-client',
+      'buffer',
+      'util',
+      'stream-browserify',
+      'assert',
+      'browserify-zlib'
     ],
   },
   define: {
     global: 'window',
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production')
   },
   server: {
     port: 5173,
